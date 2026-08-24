@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Design tokens — "calm assistant" direction.
+   Dark is the primary look; light is a supported second state, not a
+   afterthought. Every colour used anywhere in the app resolves to a token
+   here, so a future "JARVIS mode" skin is a token swap, not a refactor.
+--------------------------------------------------------------------------- */
+
+:root {
+  /* surfaces */
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --border: #dde2e9;
+
+  /* text */
+  --text: #0f172a;
+  --text-muted: #55637a;
+  --text-faint: #8a94a6;
+
+  /* brand */
+  --accent: #0d9488;
+  --accent-soft: #ccfbf1;
+  --accent-contrast: #ffffff;
+
+  /* assistant states */
+  --state-idle: #8a94a6;
+  --state-listening: #0891b2;
+  --state-thinking: #7c3aed;
+  --state-speaking: #0d9488;
+
+  /* semantic */
+  --danger: #dc2626;
+  --warning: #d97706;
+  --success: #16a34a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0f14;
+    --surface: #121821;
+    --surface-2: #1a2230;
+    --border: #232f3f;
+
+    --text: #e8edf4;
+    --text-muted: #94a3b8;
+    --text-faint: #64748b;
+
+    --accent: #2dd4bf;
+    --accent-soft: #10312e;
+    --accent-contrast: #04211f;
+
+    --state-idle: #64748b;
+    --state-listening: #22d3ee;
+    --state-thinking: #a78bfa;
+    --state-speaking: #2dd4bf;
+
+    --danger: #f87171;
+    --warning: #fbbf24;
+    --success: #4ade80;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-contrast: var(--accent-contrast);
+
+  --color-idle: var(--state-idle);
+  --color-listening: var(--state-listening);
+  --color-thinking: var(--state-thinking);
+  --color-speaking: var(--state-speaking);
+
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Respect users who ask for less motion — the voice orb animates a lot. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
