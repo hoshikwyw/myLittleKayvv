@@ -39,6 +39,18 @@ npm run dev
 Open http://localhost:5173 — you'll see the build-status board showing which
 subsystems are wired up.
 
+### Database setup
+
+Create a free Postgres at [neon.tech](https://neon.tech), copy the connection
+string into `DATABASE_URL` in `.env.local`, then:
+
+```bash
+npm run db:migrate    # creates the pgvector extension and all seven tables
+curl http://localhost:5173/api/health
+```
+
+A healthy response lists the tables and reports `"pgvector": true`.
+
 ### Keys you'll need
 
 | Variable | Where to get it | Needed for |

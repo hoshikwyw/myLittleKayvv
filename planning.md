@@ -98,8 +98,8 @@ Each part is self-contained, independently verifiable, and ends with a commit.
 | Part | Deliverable | Verified by | Status |
 |------|-------------|-------------|--------|
 | 0 | Scaffold: Next.js + TS + Tailwind, tokens, env, structure | `npm run dev` shows the status board | **done** |
-| 1 | DB schema + Drizzle: people, important_dates, plans, memories, conversations | Migration runs against Neon | **next** |
-| 2 | `LLMProvider` interface + Gemini adapter + streaming chat route | Text chat works end to end | todo |
+| 1 | DB schema + Drizzle: people, important_dates, plans, memories, conversations | Migration runs against Neon | **schema done, awaiting `DATABASE_URL`** |
+| 2 | `LLMProvider` interface + Gemini adapter + streaming chat route | Text chat works end to end | **next** |
 | 3 | Tool registry + agent loop (tool calling, multi-turn) | A question that needs a tool gets answered | todo |
 | 4 | Memory tools + confirm-card UX | "her birthday is March 3" -> card -> DB row | todo |
 | 5 | Assistant shell: chat panel, voice orb, state machine | Looks like a real assistant | todo |
@@ -110,7 +110,45 @@ Each part is self-contained, independently verifiable, and ends with a commit.
 
 Parts 0-4 are the spine. Shipping only those would already be useful.
 
-## 7. Open questions
+## 7. Schema design notes (Part 1)
+
+Seven tables. The shape encodes the architecture, so the reasoning matters:
+
+**`important_dates` stores month/day/year as separate integers, not a timestamp.**
+A birthday is a calendar recurrence, not an instant. The moment a UTC cron job
+compares timestamps you inherit timezone drift and leap-year edge cases. Integer
+parts also let `year` be null, which is the common case — you know the day, not
+the year.
+
+**`last_notified_on` lives on the row, not in a queue.** Vercel Cron guarantees
+timing only within the hour and can retry. Recording the date we last notified
+makes the sweep idempotent for free.
+
+**`remind_days_before` is an integer array (`{7,1,0}`).** Lead time is per-date,
+not global — a wedding anniversary deserves more warning than a colleague's
+birthday.
+
+**`memories.confirmed` implements decision D6 directly.** Auto-extracted facts
+land unconfirmed and are recalled with lower trust; the UI card flips the flag.
+`source_message_id` keeps the receipt so you can always see where a fact came
+from.
+
+**Embeddings are 768-dimensional.** Gemini's embedding model supports truncation
+to 768 and pgvector's HNSW index caps at 2000 dimensions. Indexed with
+`vector_cosine_ops`, the right default for text.
+
+**`plans.external_id` is uniquely indexed.** Re-syncing Google Calendar must
+update rows rather than duplicate them.
+
+**No `user_id` anywhere.** Decision D1 is single-user. Adding the column later is
+a migration; carrying it now is dead weight in every query.
+
+**Neon HTTP driver, not WebSocket.** One round trip per query, no pool to manage
+in a function that may be frozen mid-request. The cost is no interactive
+transactions — if a call site ever needs one, it switches drivers locally rather
+than changing the shared client.
+
+## 8. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)
