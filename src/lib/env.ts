@@ -29,7 +29,14 @@ export const env = {
     return required("GEMINI_API_KEY");
   },
   get geminiModel() {
-    return optional("GEMINI_MODEL", "gemini-2.5-flash");
+    return optional("GEMINI_MODEL", "gemini-3.6-flash");
+  },
+  /**
+   * Changing this later means re-embedding every stored memory — vectors from
+   * two different models are not comparable.
+   */
+  get geminiEmbeddingModel() {
+    return optional("GEMINI_EMBEDDING_MODEL", "gemini-embedding-2");
   },
 
   // --- Database (Part 1) ---

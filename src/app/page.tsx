@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { configured, env } from "@/lib/env";
 
 /**
@@ -134,9 +135,19 @@ export default function Home() {
         </ul>
       </section>
 
-      <footer className="text-text-faint border-border border-t pt-6 text-xs">
-        See <span className="font-mono">planning.md</span> for the architecture
-        and decision log.
+      <footer className="border-border flex items-center justify-between border-t pt-6">
+        <span className="text-text-faint text-xs">
+          See <span className="font-mono">planning.md</span> for the
+          architecture and decision log.
+        </span>
+        {configured.llm() && (
+          <Link
+            href="/chat"
+            className="bg-accent text-accent-contrast rounded-lg px-3 py-1.5 text-xs font-medium"
+          >
+            Open chat
+          </Link>
+        )}
       </footer>
     </main>
   );
