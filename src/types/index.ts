@@ -22,8 +22,16 @@ export type ChatStreamEvent =
   | { type: "text"; delta: string }
   | { type: "tool_start"; id: string; name: string }
   | { type: "tool_end"; id: string; name: string; ok: boolean }
+  | { type: "memory"; writes: MemoryWriteSummary[] }
   | { type: "error"; message: string; retryable: boolean }
   | { type: "done" };
+
+/** Something the assistant stored this turn, offered back as an undo. */
+export interface MemoryWriteSummary {
+  kind: "person" | "date" | "fact";
+  id: string;
+  summary: string;
+}
 
 /** A tool invocation as the UI tracks it. */
 export interface ToolActivity {

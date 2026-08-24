@@ -46,8 +46,20 @@ function buildStatus(): Subsystem[] {
         : "Gemini — set GEMINI_API_KEY",
       status: configured.llm() ? "ready" : "pending",
     },
-    { part: 3, name: "Agent loop", detail: "Tool registry and reasoning loop", status: "planned" },
-    { part: 4, name: "Memory", detail: "People, dates, and recall", status: "planned" },
+    {
+      part: 3,
+      name: "Agent loop",
+      detail: "Tool registry and reasoning loop",
+      status: "ready",
+    },
+    {
+      part: 4,
+      name: "Memory",
+      detail: configured.database()
+        ? "People, dates, and semantic recall"
+        : "People, dates, and recall — needs DATABASE_URL",
+      status: configured.database() ? "ready" : "pending",
+    },
     { part: 5, name: "Assistant shell", detail: "Chat panel and voice orb", status: "planned" },
     { part: 6, name: "Voice", detail: "Speech in, speech out", status: "planned" },
     {

@@ -101,8 +101,8 @@ Each part is self-contained, independently verifiable, and ends with a commit.
 | 1 | DB schema + Drizzle: people, important_dates, plans, memories, conversations | Migration runs against Neon | **schema done, awaiting `DATABASE_URL`** |
 | 2 | `LLMProvider` interface + Gemini adapter + streaming chat route | Text chat works end to end | **done** |
 | 3 | Tool registry + agent loop (tool calling, multi-turn) | A question that needs a tool gets answered | **done** |
-| 4 | Memory tools + confirm-card UX | "her birthday is March 3" -> card -> DB row | **next** |
-| 5 | Assistant shell: chat panel, voice orb, state machine | Looks like a real assistant | todo |
+| 4 | Memory tools + confirm-card UX | "her birthday is March 3" -> card -> DB row | **built, awaiting `DATABASE_URL`** |
+| 5 | Assistant shell: chat panel, voice orb, state machine | Looks like a real assistant | **next** |
 | 6 | `VoiceAdapter` + browser STT/TTS, barge-in | You talk, it talks back | todo |
 | 7 | Google Maps Places, Search, Calendar tools | "Find coffee near me" returns real places | todo |
 | 8 | Vercel Cron + Telegram + email fallback | A test date fires a real Telegram message | todo |
@@ -183,7 +183,46 @@ drops it. The adapter reads raw parts instead and carries the value through an
 opaque `providerState` field on `ToolCallRequest` — vendor-neutral in the
 interface, understood only by the adapter that produced it.
 
-## 9. Open questions
+## 9. Memory notes (Part 4)
+
+**Writes happen first, undo second.** Decision D6 in practice: a fact is saved
+as it is heard, then shown as a card with a way to take it back. Asking
+permission mid-conversation would make the assistant tiresome, and a missed fact
+costs the memory entirely while a wrong one costs a single click.
+
+**Undo is genuinely destructive.** A card that merely hid the row would leave
+the assistant still believing something the user explicitly rejected.
+
+**The write log is per-request, not module scope.** A module-level array is
+shared across concurrent requests hitting the same warm serverless instance, and
+one turn's undo card would show another turn's writes.
+
+**Person resolution is the failure mode that quietly ruins a memory system.**
+"Nandar", "Nan", and "my sister" must all reach one row, or the assistant
+accumulates duplicate people and remembers each of them half. Name, nickname,
+and aliases are all matched case-insensitively; an unambiguous prefix match is
+the fallback, and two candidates means asking rather than guessing.
+
+**Updates never blank out a stored value.** The model volunteering less detail
+this time must not erase what it told us last time.
+
+**Embedding failure does not lose the fact.** A memory without a vector is still
+readable by every exact query — it just will not surface in semantic recall, and
+can be backfilled later. Losing the content instead would be unforgivable.
+
+**Vector search happens in Postgres.** Ordering by `<=>` against the HNSW index,
+not by pulling rows into JavaScript, which is the entire reason the vectors live
+there.
+
+**Memory tools are only registered when a database exists**, and the system
+prompt is told when memory is offline. Without that second half the model
+cheerfully answers "I'll remember that" while nothing is stored — verified, and
+now fixed.
+
+**Leap birthdays are observed on 1 March.** Someone born on 29 February would
+otherwise be skipped three years in four.
+
+## 10. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

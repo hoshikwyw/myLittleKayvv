@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { buildSystemPrompt, getProvider } from "@/lib/llm";
-import { getToolRegistry, runAgent } from "@/lib/agent";
+import { buildToolRegistry, MemoryWriteLog, runAgent } from "@/lib/agent";
 import type { ConversationTurn } from "@/lib/llm";
 import { configured } from "@/lib/env";
 import type { ChatStreamEvent } from "@/types";
@@ -55,6 +55,9 @@ export async function POST(request: Request) {
   );
 
   const provider = getProvider();
+  // Scoped to this turn so concurrent requests cannot see each other's writes.
+  const writeLog = new MemoryWriteLog();
+  const tools = buildToolRegistry(writeLog);
 
   // Server-Sent Events rather than WebSocket: Vercel functions cannot hold a
   // socket open (see the constraint table in planning.md).
@@ -71,9 +74,11 @@ export async function POST(request: Request) {
       try {
         for await (const event of runAgent({
           provider,
-          tools: getToolRegistry(),
+          tools,
           turns,
-          system: buildSystemPrompt(),
+          system: buildSystemPrompt({
+            memoryAvailable: configured.database(),
+          }),
           signal: request.signal,
         })) {
           switch (event.type) {
@@ -102,6 +107,10 @@ export async function POST(request: Request) {
               break;
           }
         }
+        // Anything written this turn becomes an undo card in the UI.
+        const writes = writeLog.drain();
+        if (writes.length > 0) send({ type: "memory", writes });
+
         send({ type: "done" });
       } catch (error) {
         send({

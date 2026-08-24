@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, Check, Loader2, Square, X } from "lucide-react";
-import type { ChatStreamEvent, Message, ToolActivity } from "@/types";
+import type {
+  ChatStreamEvent,
+  MemoryWriteSummary,
+  Message,
+  ToolActivity,
+} from "@/types";
+import { MemoryCard } from "./memory-card";
 import { cn } from "@/lib/utils";
 
 /**
@@ -23,13 +29,14 @@ export function ChatPanel() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tools, setTools] = useState<ToolActivity[]>([]);
+  const [writes, setWrites] = useState<MemoryWriteSummary[]>([]);
 
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, writes]);
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
@@ -64,6 +71,7 @@ export function ChatPanel() {
     setInput("");
     setError(null);
     setTools([]);
+    setWrites([]);
     setStreaming(true);
 
     const controller = new AbortController();
@@ -132,6 +140,8 @@ export function ChatPanel() {
                   : t,
               ),
             );
+          } else if (event.type === "memory") {
+            setWrites(event.writes);
           } else if (event.type === "error") {
             setError(event.message);
           }
@@ -206,6 +216,14 @@ export function ChatPanel() {
                 </li>
               ))}
             </ul>
+          )}
+
+          {writes.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {writes.map((write) => (
+                <MemoryCard key={`${write.kind}-${write.id}`} write={write} />
+              ))}
+            </div>
           )}
 
           {error && (
