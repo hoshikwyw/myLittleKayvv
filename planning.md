@@ -21,7 +21,7 @@ memory is the soul. Most hobby Jarvis clones build 1+2 and ship a chatbot with a
 |---|----------|--------|------|
 | D1 | Scope | Personal, single user | 2026-08-24 |
 | D2 | Platform | Web first; Tauri desktop later for always-on wake word | 2026-08-24 |
-| D3 | LLM | Gemini 2.5 Flash (free tier) behind an `LLMProvider` interface | 2026-08-24 |
+| D3 | LLM | Gemini 3.6 Flash (free tier) behind an `LLMProvider` interface | 2026-08-24 |
 | D4 | Language | English voice; English + Burmese text | 2026-08-24 |
 | D5 | Voice Phase 1 | Browser Web Speech API (free), behind `VoiceAdapter` interface | 2026-08-24 |
 | D6 | Memory policy | Auto-extract facts, surface an undoable confirm card | 2026-08-24 |
@@ -81,7 +81,7 @@ ecosystem, which we do not actually need for Gemini plus tool calls.
 | Styling | Tailwind CSS 4 + design tokens | Token layer enables theme skins |
 | Animation | Motion | Voice orb and state transitions |
 | Streaming | SSE (`ReadableStream`) | Vercel cannot hold a WebSocket |
-| LLM | `@google/genai`, Gemini 2.5 Flash | Free tier, good function calling |
+| LLM | `@google/genai`, Gemini 3.6 Flash | 2.5 Flash 404s for newly issued keys |
 | Structured memory | Neon Postgres + Drizzle ORM | Serverless-native, free tier |
 | Semantic memory | pgvector on the same Neon DB | One database, not two |
 | Scheduler | Vercel Cron, daily 00:00 UTC | Free, no server to babysit |
@@ -99,9 +99,9 @@ Each part is self-contained, independently verifiable, and ends with a commit.
 |------|-------------|-------------|--------|
 | 0 | Scaffold: Next.js + TS + Tailwind, tokens, env, structure | `npm run dev` shows the status board | **done** |
 | 1 | DB schema + Drizzle: people, important_dates, plans, memories, conversations | Migration runs against Neon | **schema done, awaiting `DATABASE_URL`** |
-| 2 | `LLMProvider` interface + Gemini adapter + streaming chat route | Text chat works end to end | **next** |
-| 3 | Tool registry + agent loop (tool calling, multi-turn) | A question that needs a tool gets answered | todo |
-| 4 | Memory tools + confirm-card UX | "her birthday is March 3" -> card -> DB row | todo |
+| 2 | `LLMProvider` interface + Gemini adapter + streaming chat route | Text chat works end to end | **done** |
+| 3 | Tool registry + agent loop (tool calling, multi-turn) | A question that needs a tool gets answered | **done** |
+| 4 | Memory tools + confirm-card UX | "her birthday is March 3" -> card -> DB row | **next** |
 | 5 | Assistant shell: chat panel, voice orb, state machine | Looks like a real assistant | todo |
 | 6 | `VoiceAdapter` + browser STT/TTS, barge-in | You talk, it talks back | todo |
 | 7 | Google Maps Places, Search, Calendar tools | "Find coffee near me" returns real places | todo |
@@ -148,7 +148,42 @@ in a function that may be frozen mid-request. The cost is no interactive
 transactions — if a call site ever needs one, it switches drivers locally rather
 than changing the shared client.
 
-## 8. Open questions
+## 8. Agent loop notes (Part 3)
+
+**Hand-rolled, one readable function.** Ask the model, run the tools it asked
+for, hand results back, repeat. A framework would bury exactly what goes wrong:
+where the turn history came from, why a tool ran twice, what happened when one
+failed.
+
+**Two hard stops.** `maxIterations` (6) catches a model that keeps calling the
+same tool forever; `budgetMs` (25s) stops short of Vercel's 30s kill so the user
+gets a sentence instead of a dead connection. Both exits say something rather
+than going quiet.
+
+**Tool failures are values, not exceptions.** A thrown error would abort the
+turn. Returning the failure to the model lets it explain itself or try
+something else — verified: asked to divide by zero, it answered "division by
+zero is undefined" rather than erroring out.
+
+**`tool_start` for the whole batch fires before any tool runs**, so the UI shows
+every spinner at once instead of revealing work after it finished.
+
+**Zod schemas are the single source of truth** — they generate the JSON Schema
+the model sees and validate the arguments it sends back. No second place to
+drift. `$schema` is stripped because Gemini rejects it.
+
+**The calculator parses; it never evaluates.** Input reaching it originates from
+whatever text the model read, so `eval` would be a remote execution hole wearing
+a calculator costume. Hand-written recursive descent instead, verified to reject
+`alert(1)`, `process.exit()`, and `$(whoami)`.
+
+**Thought signatures (Gemini 3).** Gemini 3 rejects a follow-up whose function
+call has lost its `thoughtSignature`, and the SDK's `functionCalls` accessor
+drops it. The adapter reads raw parts instead and carries the value through an
+opaque `providerState` field on `ToolCallRequest` — vendor-neutral in the
+interface, understood only by the adapter that produced it.
+
+## 9. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

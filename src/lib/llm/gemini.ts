@@ -31,6 +31,11 @@ function toGeminiContents(turns: ConversationTurn[]): Content[] {
       for (const call of turn.toolCalls ?? []) {
         parts.push({
           functionCall: { id: call.id, name: call.name, args: call.args },
+          // Gemini 3 refuses a follow-up request whose function call has lost
+          // its thought signature, so it goes back exactly as it arrived.
+          ...(isGeminiState(call.providerState)
+            ? { thoughtSignature: call.providerState.thoughtSignature }
+            : {}),
         });
       }
       if (parts.length > 0) contents.push({ role: "model", parts });
@@ -51,6 +56,18 @@ function toGeminiContents(turns: ConversationTurn[]): Content[] {
   }
 
   return contents;
+}
+
+interface GeminiCallState {
+  thoughtSignature: string;
+}
+
+function isGeminiState(value: unknown): value is GeminiCallState {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as GeminiCallState).thoughtSignature === "string"
+  );
 }
 
 /** functionResponse.response must be an object, so scalars get wrapped. */
@@ -128,11 +145,22 @@ export class GeminiProvider implements LLMProvider {
         const text = chunk.text;
         if (text) yield { type: "text", delta: text };
 
-        for (const call of chunk.functionCalls ?? []) {
-          if (!call.name) continue;
+        // Read parts rather than the functionCalls accessor: the accessor
+        // drops thoughtSignature, which the next request cannot do without.
+        for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
+          const call = part.functionCall;
+          if (!call?.name) continue;
+
           yield {
             type: "tool_call",
-            call: { id: call.id, name: call.name, args: call.args ?? {} },
+            call: {
+              id: call.id,
+              name: call.name,
+              args: call.args ?? {},
+              ...(part.thoughtSignature
+                ? { providerState: { thoughtSignature: part.thoughtSignature } }
+                : {}),
+            },
           };
         }
 

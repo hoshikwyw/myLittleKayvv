@@ -25,6 +25,13 @@ export interface ToolCallRequest {
   id?: string;
   name: string;
   args: Record<string, unknown>;
+  /**
+   * Provider-private state that must be echoed back verbatim on the next
+   * request. Gemini 3 rejects a follow-up whose function call has lost its
+   * thought signature; other providers have their own equivalents. Opaque on
+   * purpose — only the adapter that produced it may look inside.
+   */
+  providerState?: unknown;
 }
 
 /** The result we hand back after running one. */

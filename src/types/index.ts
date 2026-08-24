@@ -20,6 +20,14 @@ export interface Message {
  */
 export type ChatStreamEvent =
   | { type: "text"; delta: string }
-  | { type: "usage"; usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number } }
+  | { type: "tool_start"; id: string; name: string }
+  | { type: "tool_end"; id: string; name: string; ok: boolean }
   | { type: "error"; message: string; retryable: boolean }
   | { type: "done" };
+
+/** A tool invocation as the UI tracks it. */
+export interface ToolActivity {
+  id: string;
+  name: string;
+  status: "running" | "ok" | "failed";
+}

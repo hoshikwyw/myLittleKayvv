@@ -1,16 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, Square } from "lucide-react";
-import type { ChatStreamEvent, Message } from "@/types";
+import { ArrowUp, Check, Loader2, Square, X } from "lucide-react";
+import type { ChatStreamEvent, Message, ToolActivity } from "@/types";
 import { cn } from "@/lib/utils";
 
 /**
- * Bare chat surface for Part 2.
+ * Bare chat surface.
  *
- * Deliberately plain — its job is to prove the streaming pipeline end to end.
- * The real assistant shell, with the voice orb and state machine, arrives in
- * Part 5 and replaces this.
+ * Deliberately plain — its job is to prove the streaming pipeline and the
+ * agent loop end to end, tool activity included. The real assistant shell,
+ * with the voice orb and state machine, arrives in Part 5 and replaces this.
  */
 
 function newId() {
@@ -22,6 +22,7 @@ export function ChatPanel() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tools, setTools] = useState<ToolActivity[]>([]);
 
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -62,6 +63,7 @@ export function ChatPanel() {
     ]);
     setInput("");
     setError(null);
+    setTools([]);
     setStreaming(true);
 
     const controller = new AbortController();
@@ -115,8 +117,24 @@ export function ChatPanel() {
             continue;
           }
 
-          if (event.type === "text") appendDelta(event.delta);
-          else if (event.type === "error") setError(event.message);
+          if (event.type === "text") {
+            appendDelta(event.delta);
+          } else if (event.type === "tool_start") {
+            setTools((prev) => [
+              ...prev,
+              { id: event.id, name: event.name, status: "running" },
+            ]);
+          } else if (event.type === "tool_end") {
+            setTools((prev) =>
+              prev.map((t) =>
+                t.id === event.id
+                  ? { ...t, status: event.ok ? "ok" : "failed" }
+                  : t,
+              ),
+            );
+          } else if (event.type === "error") {
+            setError(event.message);
+          }
         }
       }
     } catch (err) {
@@ -167,6 +185,28 @@ export function ChatPanel() {
               </div>
             </div>
           ))}
+
+          {tools.length > 0 && (
+            <ul className="flex flex-col gap-1.5" aria-label="Tool activity">
+              {tools.map((tool) => (
+                <li
+                  key={tool.id}
+                  className="text-text-muted flex items-center gap-2 text-xs"
+                >
+                  {tool.status === "running" && (
+                    <Loader2 className="text-thinking size-3.5 animate-spin" />
+                  )}
+                  {tool.status === "ok" && (
+                    <Check className="text-success size-3.5" />
+                  )}
+                  {tool.status === "failed" && (
+                    <X className="text-danger size-3.5" />
+                  )}
+                  <span className="font-mono">{tool.name}</span>
+                </li>
+              ))}
+            </ul>
+          )}
 
           {error && (
             <p

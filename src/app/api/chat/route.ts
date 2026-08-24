@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { buildSystemPrompt, getProvider } from "@/lib/llm";
+import { getToolRegistry, runAgent } from "@/lib/agent";
 import type { ConversationTurn } from "@/lib/llm";
 import { configured } from "@/lib/env";
 import type { ChatStreamEvent } from "@/types";
@@ -68,7 +69,9 @@ export async function POST(request: Request) {
       };
 
       try {
-        for await (const event of provider.stream({
+        for await (const event of runAgent({
+          provider,
+          tools: getToolRegistry(),
           turns,
           system: buildSystemPrompt(),
           signal: request.signal,
@@ -76,6 +79,17 @@ export async function POST(request: Request) {
           switch (event.type) {
             case "text":
               send({ type: "text", delta: event.delta });
+              break;
+            case "tool_start":
+              send({ type: "tool_start", id: event.id, name: event.name });
+              break;
+            case "tool_end":
+              send({
+                type: "tool_end",
+                id: event.id,
+                name: event.name,
+                ok: event.ok,
+              });
               break;
             case "error":
               send({
@@ -85,12 +99,6 @@ export async function POST(request: Request) {
                   : event.message,
                 retryable: event.retryable,
               });
-              break;
-            case "usage":
-              send({ type: "usage", usage: event.usage });
-              break;
-            case "tool_call":
-              // Wired up in Part 3, when the agent loop can actually run them.
               break;
           }
         }
