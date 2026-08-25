@@ -36,8 +36,8 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 — you'll see the build-status board showing which
-subsystems are wired up.
+Open http://localhost:5173 for the assistant. The build-status board, showing
+which subsystems are wired up, is at `/status`.
 
 ### Database setup
 
@@ -66,6 +66,7 @@ A healthy response lists the tables and reports `"pgvector": true`.
 src/
   app/           routes, API handlers, global styles
   components/    UI, with primitives under ui/
+  hooks/         assistant state machine and transport
   lib/
     env.ts       validated environment access
     llm/         model providers behind one interface

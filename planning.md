@@ -102,8 +102,8 @@ Each part is self-contained, independently verifiable, and ends with a commit.
 | 2 | `LLMProvider` interface + Gemini adapter + streaming chat route | Text chat works end to end | **done** |
 | 3 | Tool registry + agent loop (tool calling, multi-turn) | A question that needs a tool gets answered | **done** |
 | 4 | Memory tools + confirm-card UX | "her birthday is March 3" -> card -> DB row | **built, awaiting `DATABASE_URL`** |
-| 5 | Assistant shell: chat panel, voice orb, state machine | Looks like a real assistant | **next** |
-| 6 | `VoiceAdapter` + browser STT/TTS, barge-in | You talk, it talks back | todo |
+| 5 | Assistant shell: conversation, voice orb, state machine | Looks like a real assistant | **done** |
+| 6 | `VoiceAdapter` + browser STT/TTS, barge-in | You talk, it talks back | **next** |
 | 7 | Google Maps Places, Search, Calendar tools | "Find coffee near me" returns real places | todo |
 | 8 | Vercel Cron + Telegram + email fallback | A test date fires a real Telegram message | todo |
 | 9 | Deploy to Vercel, env wiring, cron verification | Live URL, reminders firing from the cloud | todo |
@@ -222,7 +222,38 @@ now fixed.
 **Leap birthdays are observed on 1 March.** Someone born on 29 February would
 otherwise be skipped three years in four.
 
-## 10. Open questions
+## 10. Shell notes (Part 5)
+
+**State is explicit, never inferred.** The UI reads one `AssistantState` rather
+than working out what is happening from whether some other field is empty. This
+matters the moment voice arrives: "listening" and "thinking" look nothing alike
+to a person, and a UI deriving them from side effects gets them wrong.
+
+`idle → thinking → speaking → idle`, with `error` reachable from either working
+state and `listening` driven only by the microphone in Part 6.
+
+**The transition to "speaking" happens on the first token**, not at the end of
+the stream. That is the moment it stops thinking and starts answering, and the
+orb should change there.
+
+**Each state has a distinct motion, not just a distinct colour.** Colour alone
+fails for the roughly 8% of men with colour vision deficiency, and fails again
+on a phone in sunlight. Idle breathes slowly, listening ripples outward,
+thinking turns a ring that never progresses, speaking pulses quickly, error goes
+still. The state is also written in words in an `aria-live` region, because an
+animation on its own is not an interface.
+
+**`prefers-reduced-motion` is honoured in JavaScript too.** The CSS override in
+`globals.css` cannot reach Motion's animations, so the orb checks
+`useReducedMotion` and holds still.
+
+**The orb shrinks into the header rather than disappearing** once a conversation
+starts, so the state indicator never moves out from under the eye watching it.
+
+**Routes moved:** the assistant is now `/`, and the developer build board is
+`/status`. The product should be what opens.
+
+## 11. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)
