@@ -105,8 +105,8 @@ Each part is self-contained, independently verifiable, and ends with a commit.
 | 5 | Assistant shell: conversation, voice orb, state machine | Looks like a real assistant | **done** |
 | 6 | `VoiceAdapter` + browser STT/TTS, barge-in | You talk, it talks back | **done** |
 | 7 | Maps, Search, Calendar, and local plans | "Find coffee near me" returns real places | **built, awaiting API keys** |
-| 8 | Vercel Cron + Telegram + email fallback | A test date fires a real Telegram message | **next** |
-| 9 | Deploy to Vercel, env wiring, cron verification | Live URL, reminders firing from the cloud | todo |
+| 8 | Vercel Cron + Telegram + email fallback | A test date fires a real Telegram message | **built, awaiting DB + bot token** |
+| 9 | Deploy to Vercel, env wiring, cron verification | Live URL, reminders firing from the cloud | **next** |
 
 Parts 0-4 are the spine. Shipping only those would already be useful.
 
@@ -342,7 +342,50 @@ Places, Search, and Calendar all need credentials that do not exist yet. The
 timezone arithmetic and the tool wiring are tested; the three HTTP integrations
 have never made a real request.
 
-## 13. Open questions
+## 13. Reminder engine notes (Part 8)
+
+**The sweep never touches the language model.** Principle 1 in AGENTS.md, made
+literal: dates live in Postgres and the sweep is arithmetic. The one guarantee
+this feature needs is the one an LLM cannot give.
+
+**The firing rule is a pure function.** `selectDueDates` takes rows and returns
+decisions, with no I/O anywhere near it, because it is the single most important
+rule in the project — the difference between remembering an anniversary and
+missing one. Fourteen unit tests cover lead times, custom leads, silence on
+non-lead days, ages, expired one-offs, and a leap birthday firing in a non-leap
+year.
+
+**Idempotency lives on the row.** Vercel Cron guarantees the hour, not the
+minute, and may retry. `last_notified_on` is compared against today in the
+owner's timezone, so a second run the same day stays silent.
+
+**Rows are only marked as notified once delivery succeeds.** Marking on failure
+would lose the reminder entirely, which is the single outcome worth avoiding.
+
+**One message, not one per item.** Three separate pings about the same morning
+is how a person learns to swipe the notification away without reading it.
+
+**Telegram uses HTML, not MarkdownV2.** MarkdownV2 requires eighteen characters
+escaped anywhere in the message and rejects the whole thing if one is missed — a
+surname with a hyphen would silently lose a reminder. HTML needs three.
+
+**Email is a fallback, not a copy.** Delivery stops at the first success. Being
+told twice about the same birthday trains you to ignore both.
+
+**Every attempt is logged** to the `notifications` table. "Did it send?" has to
+be answerable, or the system cannot be trusted.
+
+**The cron secret is compared in constant time**, so a wrong secret cannot be
+narrowed down by timing the response. `?dryRun=1` reports what would be sent
+without sending or marking anything.
+
+**Schedule: 00:00 UTC daily**, the most Vercel Hobby allows. That lands at 06:30
+in Yangon, which is a reasonable hour to learn that a birthday is tomorrow.
+
+**Lead times are capped at 90 days** in the tool schema, matching the sweep's
+lookahead, so nothing can be stored that the sweep would silently never fire.
+
+## 14. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

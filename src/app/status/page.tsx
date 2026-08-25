@@ -90,9 +90,12 @@ function buildStatus(): Subsystem[] {
       part: 8,
       name: "Reminders",
       detail: configured.telegram()
-        ? "Telegram connected"
-        : "Daily cron, Telegram, email",
-      status: "planned",
+        ? "Daily sweep at 00:00 UTC via Telegram"
+        : configured.email()
+          ? "Daily sweep at 00:00 UTC via email"
+          : "Daily cron — add TELEGRAM_BOT_TOKEN or RESEND_API_KEY",
+      status:
+        configured.telegram() || configured.email() ? "ready" : "pending",
     },
   ];
 }

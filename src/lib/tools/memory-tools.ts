@@ -3,6 +3,7 @@ import { upcomingDates, addImportantDate, validateMonthDay } from "@/lib/memory/
 import { recallMemories, storeMemory } from "@/lib/memory/facts";
 import { findPerson, listPeople, personProfile, upsertPerson } from "@/lib/memory/people";
 import { formatMonthDay } from "@/lib/memory/calendar";
+import { MAX_LEAD_DAYS } from "@/lib/reminders/sweep";
 import { defineTool } from "./types";
 
 /**
@@ -128,10 +129,13 @@ export function createMemoryTools(log: MemoryWriteLog) {
         .optional()
         .describe("The original year, if known — the year they were born or married"),
       remind_days_before: z
-        .array(z.number().int().min(0).max(365))
+        .array(z.number().int().min(0).max(MAX_LEAD_DAYS))
         .max(5)
         .optional()
-        .describe("How many days of warning to give. Defaults to 7, 1, and 0."),
+        .describe(
+          `How many days of warning to give, at most ${MAX_LEAD_DAYS}. ` +
+            "Defaults to 7, 1, and 0.",
+        ),
     }),
     handler: async (input) => {
       const invalid = validateMonthDay(input.month, input.day);
