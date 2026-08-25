@@ -28,6 +28,63 @@ export function todayIn(timezone: string, now: Date = new Date()): CalendarDay {
   return { year, month, day };
 }
 
+/**
+ * How far the given timezone sits from UTC at a particular instant.
+ * Computed from Intl rather than hard-coded, so DST is handled wherever it
+ * applies — Yangon has none, but this must not silently break elsewhere.
+ */
+function offsetMsAt(timezone: string, at: Date): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
+      .formatToParts(at)
+      .map((part) => [part.type, part.value]),
+  ) as Record<string, string>;
+
+  const asIfUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    // Intl renders midnight as "24" in some locales' hour12:false output.
+    Number(parts.hour) % 24,
+    Number(parts.minute),
+    Number(parts.second),
+  );
+
+  return asIfUtc - at.getTime();
+}
+
+/**
+ * Turns a wall-clock time in the owner's timezone into a real instant.
+ *
+ * "Meet at 3pm" means 3pm where they are, not 3pm UTC. Getting this wrong
+ * shifts every appointment by the timezone offset — six and a half hours, in
+ * Yangon's case.
+ */
+export function zonedTimeToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour = 0,
+  minute = 0,
+  timezone = "UTC",
+): Date {
+  const naive = Date.UTC(year, month - 1, day, hour, minute);
+
+  // One correction handles the common case; a second settles the hour either
+  // side of a DST transition, where the first guess lands in the wrong offset.
+  const first = new Date(naive - offsetMsAt(timezone, new Date(naive)));
+  return new Date(naive - offsetMsAt(timezone, first));
+}
+
 export function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }

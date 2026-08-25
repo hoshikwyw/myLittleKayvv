@@ -28,7 +28,7 @@ export type ChatStreamEvent =
 
 /** Something the assistant stored this turn, offered back as an undo. */
 export interface MemoryWriteSummary {
-  kind: "person" | "date" | "fact";
+  kind: "person" | "date" | "fact" | "plan";
   id: string;
   summary: string;
 }

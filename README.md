@@ -10,7 +10,7 @@ product; voice is just the interface.
 
 - **Talk to it** — by voice or by text, about anything. It speaks as it
   thinks, and stops the moment you start talking
-- **Knows your day** — plans, schedules, what's next
+- **Knows your day** — its own plan list, plus your Google Calendar
 - **Finds things** — places on Google Maps, answers on Google Search
 - **Remembers people** — birthdays, anniversaries, the details you care about
 - **Speaks first** — tells you a birthday is coming, via Telegram or email
@@ -59,7 +59,10 @@ A healthy response lists the tables and reports `"pgvector": true`.
 | `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/apikey) | Part 2 onward |
 | `DATABASE_URL` | [Neon](https://neon.tech) | Part 1 onward |
 | `TELEGRAM_BOT_TOKEN` | [@BotFather](https://t.me/botfather) | Part 8 |
-| `GOOGLE_MAPS_API_KEY` | Google Cloud Console | Part 7 |
+| `GOOGLE_MAPS_API_KEY` | Google Cloud Console — Places API (New) | Part 7 |
+| `GOOGLE_SEARCH_API_KEY` + `GOOGLE_SEARCH_ENGINE_ID` | [Programmable Search](https://programmablesearchengine.google.com) | Part 7 |
+| `GOOGLE_OAUTH_*` | Google Cloud OAuth client, calendar.readonly scope | Part 7 |
+| `HOME_LOCATION` | `lat,lng` — what "near me" means | Part 7 |
 
 ## Layout
 

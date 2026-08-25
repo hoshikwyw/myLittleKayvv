@@ -104,8 +104,8 @@ Each part is self-contained, independently verifiable, and ends with a commit.
 | 4 | Memory tools + confirm-card UX | "her birthday is March 3" -> card -> DB row | **built, awaiting `DATABASE_URL`** |
 | 5 | Assistant shell: conversation, voice orb, state machine | Looks like a real assistant | **done** |
 | 6 | `VoiceAdapter` + browser STT/TTS, barge-in | You talk, it talks back | **done** |
-| 7 | Google Maps Places, Search, Calendar tools | "Find coffee near me" returns real places | **next** |
-| 8 | Vercel Cron + Telegram + email fallback | A test date fires a real Telegram message | todo |
+| 7 | Maps, Search, Calendar, and local plans | "Find coffee near me" returns real places | **built, awaiting API keys** |
+| 8 | Vercel Cron + Telegram + email fallback | A test date fires a real Telegram message | **next** |
 | 9 | Deploy to Vercel, env wiring, cron verification | Live URL, reminders firing from the cloud | todo |
 
 Parts 0-4 are the spine. Shipping only those would already be useful.
@@ -293,7 +293,56 @@ Microphone capture and speech synthesis need a real browser with real hardware.
 The sentence splitter, language detection, and capability reporting are unit
 tested; the actual listening and speaking have to be tried in Chrome or Edge.
 
-## 12. Open questions
+## 12. External tools notes (Part 7)
+
+**Every integration is registered only once its credentials exist**, and the
+system prompt is told what is missing. Handing the model a tool that always
+fails teaches it to stop reaching for it; leaving it uninformed makes it answer
+from memory as though it had checked. Verified: asked to find a coffee shop with
+no keys set, it says it cannot look up places or search, and calls nothing.
+
+**Places uses a tight field mask.** The mask is mandatory and it sets the
+billing tier directly — requesting every field is the standard way to turn a
+free tier into a bill. We ask only for what gets shown.
+
+**`openNow` stays undefined when unknown.** "Closed" and "we do not know" are
+different answers and must never collapse into the same one.
+
+**Web search names its real failure.** The Custom Search free tier is 100
+queries a day, and quota exhaustion returns a sentence saying so rather than a
+raw 429.
+
+**Calendar uses a stored refresh token, not a consent flow.** Single-user
+(decision D1), so building a consent screen, redirect handler, and token store
+for an audience of one is not worth it. Access tokens are cached with a minute
+of headroom, and a 401 drops the cache rather than replaying a dead token.
+`singleEvents=true` expands recurrences, otherwise a weekly standup comes back
+as one rule rather than the meeting that is actually next.
+
+**Calendar is read-only, and the tool description says so**, so the assistant
+declines to create events rather than claiming it did.
+
+**Plans are separate from the calendar.** Since the calendar cannot be written
+to, anything the user asks to be written down goes in our own `plans` table, and
+the undo card covers it exactly as it covers a stored fact.
+
+**Wall-clock times are converted through the owner's timezone**, not the
+server's. "Meet at 3pm" means 3pm where they are; getting it wrong shifts every
+appointment by the offset — six and a half hours in Yangon. Offsets come from
+`Intl` rather than being hard-coded, so DST is handled wherever it applies, with
+a second correction pass for the hour either side of a transition. Seven unit
+tests cover Yangon, Seoul, UTC, and New York on both sides of DST.
+
+**All-day plans are stored at midday, not midnight**, so they cannot land on the
+previous day when read back from a different offset.
+
+### Not verifiable without keys
+
+Places, Search, and Calendar all need credentials that do not exist yet. The
+timezone arithmetic and the tool wiring are tested; the three HTTP integrations
+have never made a real request.
+
+## 13. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

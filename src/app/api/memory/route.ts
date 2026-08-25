@@ -3,6 +3,7 @@ import { configured } from "@/lib/env";
 import { confirmMemory, deleteMemory } from "@/lib/memory/facts";
 import { deleteImportantDate } from "@/lib/memory/dates";
 import { deletePerson } from "@/lib/memory/people";
+import { deletePlan } from "@/lib/memory/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 const RequestSchema = z.object({
   action: z.enum(["undo", "confirm"]),
-  kind: z.enum(["person", "date", "fact"]),
+  kind: z.enum(["person", "date", "fact", "plan"]),
   id: z.uuid(),
 });
 
@@ -49,7 +50,9 @@ export async function POST(request: Request) {
         ? await deletePerson(id)
         : kind === "date"
           ? await deleteImportantDate(id)
-          : await deleteMemory(id);
+          : kind === "plan"
+            ? await deletePlan(id)
+            : await deleteMemory(id);
 
     return Response.json({ ok: removed });
   } catch (error) {

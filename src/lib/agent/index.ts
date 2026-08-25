@@ -1,6 +1,10 @@
 import { ToolRegistry } from "@/lib/tools/registry";
 import { builtinTools } from "@/lib/tools/builtin";
 import { createMemoryTools, MemoryWriteLog } from "@/lib/tools/memory-tools";
+import { createPlanTools } from "@/lib/tools/plan-tools";
+import { findPlaces } from "@/lib/tools/places";
+import { searchWeb } from "@/lib/tools/search";
+import { readCalendar } from "@/lib/tools/calendar";
 import { configured } from "@/lib/env";
 
 /**
@@ -17,8 +21,14 @@ export function buildToolRegistry(log: MemoryWriteLog): ToolRegistry {
   const registry = new ToolRegistry().register(...builtinTools);
 
   if (configured.database()) {
-    registry.register(...createMemoryTools(log));
+    registry.register(...createMemoryTools(log), ...createPlanTools(log));
   }
+
+  // Each external tool appears only once its credentials exist. Offering a tool
+  // that always fails teaches the model to stop reaching for it.
+  if (configured.maps()) registry.register(findPlaces);
+  if (configured.search()) registry.register(searchWeb);
+  if (configured.calendar()) registry.register(readCalendar);
 
   return registry;
 }

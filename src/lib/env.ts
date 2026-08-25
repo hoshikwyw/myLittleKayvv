@@ -68,6 +68,19 @@ export const env = {
   get googleSearchEngineId() {
     return required("GOOGLE_SEARCH_ENGINE_ID");
   },
+  /** "lat,lng" — what "near me" resolves to when nothing else is given. */
+  get homeLocation() {
+    return optional("HOME_LOCATION");
+  },
+  get googleOauthClientId() {
+    return required("GOOGLE_OAUTH_CLIENT_ID");
+  },
+  get googleOauthClientSecret() {
+    return required("GOOGLE_OAUTH_CLIENT_SECRET");
+  },
+  get googleOauthRefreshToken() {
+    return required("GOOGLE_OAUTH_REFRESH_TOKEN");
+  },
 
   // --- App ---
   get cronSecret() {
@@ -94,4 +107,10 @@ export const configured = {
   maps: () => Boolean(process.env.GOOGLE_MAPS_API_KEY),
   search: () =>
     Boolean(process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID),
+  calendar: () =>
+    Boolean(
+      process.env.GOOGLE_OAUTH_CLIENT_ID &&
+        process.env.GOOGLE_OAUTH_CLIENT_SECRET &&
+        process.env.GOOGLE_OAUTH_REFRESH_TOKEN,
+    ),
 } as const;

@@ -78,6 +78,11 @@ export async function POST(request: Request) {
           turns,
           system: buildSystemPrompt({
             memoryAvailable: configured.database(),
+            available: {
+              maps: configured.maps(),
+              search: configured.search(),
+              calendar: configured.calendar(),
+            },
           }),
           signal: request.signal,
         })) {

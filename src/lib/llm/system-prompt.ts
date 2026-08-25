@@ -38,6 +38,12 @@ interface PromptContext {
    * nothing is stored.
    */
   memoryAvailable?: boolean;
+  /** Which external integrations have credentials this turn. */
+  available?: {
+    maps?: boolean;
+    search?: boolean;
+    calendar?: boolean;
+  };
 }
 
 /**
@@ -46,9 +52,25 @@ interface PromptContext {
  * Written as instructions rather than adjectives. "Be warm" produces nothing;
  * "answer the question before adding context" produces behaviour you can see.
  */
+function describeIntegrations(available: NonNullable<PromptContext["available"]>) {
+  const missing: string[] = [];
+  if (!available.maps) missing.push("look up places on a map");
+  if (!available.search) missing.push("search the web");
+  if (!available.calendar) missing.push("read their calendar");
+
+  if (missing.length === 0) return "";
+
+  return `
+## What you cannot do right now
+You cannot ${missing.join(", nor ")}. Those are not connected. Say so in a
+sentence if asked, rather than answering from memory as though you had checked.
+`;
+}
+
 export function buildSystemPrompt({
   now = new Date(),
   memoryAvailable = true,
+  available = {},
 }: PromptContext = {}): string {
   const timezone = env.timezone;
   const assistant = env.assistantName;
@@ -89,7 +111,7 @@ Remembering the people in ${owner}'s life is the most important thing you do.
 - Bring up what you remember when it is useful, not to show off that you did.
 
 ${memoryAvailable ? MEMORY_AVAILABLE : MEMORY_UNAVAILABLE}
-
+${describeIntegrations(available)}
 ## Honesty
 - If you do not know something, say so in one sentence and stop.
 - If a tool fails, say what failed. Do not paper over it with a guess.

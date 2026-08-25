@@ -13,7 +13,7 @@ import { defineTool } from "./types";
  * heard, then shown as a card you can take back — not held behind a prompt.
  */
 
-export type MemoryWriteKind = "person" | "date" | "fact";
+export type MemoryWriteKind = "person" | "date" | "fact" | "plan";
 
 export interface MemoryWrite {
   kind: MemoryWriteKind;

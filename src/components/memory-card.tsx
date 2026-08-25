@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarHeart, Check, Undo2, User, Sparkles } from "lucide-react";
+import {
+  CalendarHeart,
+  Check,
+  ListChecks,
+  Sparkles,
+  Undo2,
+  User,
+} from "lucide-react";
 import type { MemoryWriteSummary } from "@/types";
 
 /**
@@ -15,12 +22,14 @@ const ICONS = {
   person: User,
   date: CalendarHeart,
   fact: Sparkles,
+  plan: ListChecks,
 } as const;
 
 const LABELS = {
   person: "Remembered someone",
   date: "Saved a date",
   fact: "Remembered",
+  plan: "Added to your plans",
 } as const;
 
 type CardState = "open" | "kept" | "undone" | "failed";

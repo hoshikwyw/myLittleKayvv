@@ -69,10 +69,22 @@ function buildStatus(): Subsystem[] {
     {
       part: 7,
       name: "External tools",
-      detail: configured.maps() || configured.search()
-        ? "Maps and Search partially configured"
-        : "Maps, Search, Calendar",
-      status: "planned",
+      detail: (() => {
+        const on = [
+          configured.maps() && "Maps",
+          configured.search() && "Search",
+          configured.calendar() && "Calendar",
+        ].filter(Boolean);
+        return on.length === 3
+          ? "Maps, Search, Calendar"
+          : on.length > 0
+            ? `${on.join(" and ")} connected — add the rest`
+            : "Maps, Search, Calendar — add API keys";
+      })(),
+      status:
+        configured.maps() && configured.search() && configured.calendar()
+          ? "ready"
+          : "pending",
     },
     {
       part: 8,
