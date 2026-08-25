@@ -8,7 +8,8 @@ product; voice is just the interface.
 
 ## What it does
 
-- **Talk to it** — by voice or by text, about anything
+- **Talk to it** — by voice or by text, about anything. It speaks as it
+  thinks, and stops the moment you start talking
 - **Knows your day** — plans, schedules, what's next
 - **Finds things** — places on Google Maps, answers on Google Search
 - **Remembers people** — birthdays, anniversaries, the details you care about

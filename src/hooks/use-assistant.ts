@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   AssistantState,
   ChatStreamEvent,
@@ -39,7 +39,14 @@ export interface UseAssistant {
   setListening: (listening: boolean) => void;
 }
 
-export function useAssistant(): UseAssistant {
+export interface AssistantCallbacks {
+  /** Every token as it arrives, so voice output can speak while it streams. */
+  onDelta?: (delta: string) => void;
+  /** The stream ended, however it ended. */
+  onComplete?: () => void;
+}
+
+export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
   const [state, setState] = useState<AssistantState>("idle");
   const [messages, setMessages] = useState<Message[]>([]);
   const [tools, setTools] = useState<ToolActivity[]>([]);
@@ -47,6 +54,12 @@ export function useAssistant(): UseAssistant {
   const [error, setError] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+  // Held in a ref so `send` does not need them as dependencies, which would
+  // rebuild it on every render and defeat the memoisation.
+  const callbacksRef = useRef(callbacks);
+  useEffect(() => {
+    callbacksRef.current = callbacks;
+  });
 
   const busy = state === "thinking" || state === "speaking";
 
@@ -157,6 +170,7 @@ export function useAssistant(): UseAssistant {
                 // First token is the moment it stops thinking and starts
                 // answering — the orb should change there, not at the end.
                 setState("speaking");
+                callbacksRef.current.onDelta?.(event.delta);
                 setMessages((prev) =>
                   prev.map((m) =>
                     m.id === assistantId
@@ -208,6 +222,7 @@ export function useAssistant(): UseAssistant {
         }
       } finally {
         abortRef.current = null;
+        callbacksRef.current.onComplete?.();
         // Drop an assistant bubble that never received a single token.
         setMessages((prev) =>
           prev.filter((m) => m.id !== assistantId || m.content.length > 0),

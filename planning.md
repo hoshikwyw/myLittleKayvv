@@ -103,8 +103,8 @@ Each part is self-contained, independently verifiable, and ends with a commit.
 | 3 | Tool registry + agent loop (tool calling, multi-turn) | A question that needs a tool gets answered | **done** |
 | 4 | Memory tools + confirm-card UX | "her birthday is March 3" -> card -> DB row | **built, awaiting `DATABASE_URL`** |
 | 5 | Assistant shell: conversation, voice orb, state machine | Looks like a real assistant | **done** |
-| 6 | `VoiceAdapter` + browser STT/TTS, barge-in | You talk, it talks back | **next** |
-| 7 | Google Maps Places, Search, Calendar tools | "Find coffee near me" returns real places | todo |
+| 6 | `VoiceAdapter` + browser STT/TTS, barge-in | You talk, it talks back | **done** |
+| 7 | Google Maps Places, Search, Calendar tools | "Find coffee near me" returns real places | **next** |
 | 8 | Vercel Cron + Telegram + email fallback | A test date fires a real Telegram message | todo |
 | 9 | Deploy to Vercel, env wiring, cron verification | Live URL, reminders firing from the cloud | todo |
 
@@ -253,7 +253,47 @@ starts, so the state indicator never moves out from under the eye watching it.
 **Routes moved:** the assistant is now `/`, and the developer build board is
 `/status`. The product should be what opens.
 
-## 11. Open questions
+## 11. Voice notes (Part 6)
+
+**Barge-in is the feature.** If the assistant is talking and you start talking,
+it stops immediately. An assistant that talks over you is worse than one that
+cannot talk at all. Tapping the microphone cancels speech before recognition
+even starts.
+
+**It speaks while it streams.** Waiting for a full reply before saying a word
+throws away the entire latency budget, so text is buffered only as far as the
+next sentence boundary and each finished sentence is queued. The splitter
+refuses to break on a terminator sitting at the end of the buffer, because "3."
+may still be growing into "3.5" — verified against a simulated token stream
+where digits and dates land across chunk boundaries.
+
+**Utterances are serialised through a promise queue**, so sentences never
+overlap, and one failed utterance cannot poison the rest.
+
+**Burmese is read, not spoken.** Decision D4 made concrete: no browser engine
+can pronounce Burmese, and handing it to an English voice produces noise, so
+replies containing Burmese script are displayed and skipped by synthesis.
+
+**Capabilities are reported honestly.** Firefox has no speech recognition at
+all; rather than failing when someone taps the microphone, the button is not
+offered. Detection goes through `useSyncExternalStore` with a server snapshot,
+which is the sanctioned way to have a value differ between server and client
+without a hydration mismatch or a `setState` in an effect.
+
+**`abort()` rather than `stop()`** when the user stops listening: `stop()` waits
+to deliver one more result, which is not what tapping "stop" asks for.
+
+**Speech is cancelled on unmount.** `speechSynthesis` outlives the React tree,
+so leaving the page mid-sentence would otherwise leave a voice talking to an
+empty room.
+
+### Not verifiable from a terminal
+
+Microphone capture and speech synthesis need a real browser with real hardware.
+The sentence splitter, language detection, and capability reporting are unit
+tested; the actual listening and speaking have to be tried in Chrome or Edge.
+
+## 12. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)
