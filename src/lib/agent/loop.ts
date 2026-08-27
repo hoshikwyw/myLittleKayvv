@@ -39,6 +39,8 @@ export interface AgentOptions {
    */
   budgetMs?: number;
   now?: Date;
+  /** Passed through to tools so stored facts keep their provenance. */
+  sourceMessageId?: string;
 }
 
 const DEFAULT_MAX_ITERATIONS = 6;
@@ -62,6 +64,7 @@ export async function* runAgent(
     maxIterations = DEFAULT_MAX_ITERATIONS,
     budgetMs = DEFAULT_BUDGET_MS,
     now = new Date(),
+    sourceMessageId,
   } = options;
 
   const turns: ConversationTurn[] = [...options.turns];
@@ -125,6 +128,7 @@ export async function* runAgent(
         const outcome = await tools.execute(call.name, call.args, {
           signal,
           now,
+          sourceMessageId,
         });
 
         return {

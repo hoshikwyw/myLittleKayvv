@@ -23,6 +23,7 @@ export type ChatStreamEvent =
   | { type: "tool_start"; id: string; name: string }
   | { type: "tool_end"; id: string; name: string; ok: boolean }
   | { type: "memory"; writes: MemoryWriteSummary[] }
+  | { type: "conversation"; id: string }
   | { type: "error"; message: string; retryable: boolean }
   | { type: "done" };
 

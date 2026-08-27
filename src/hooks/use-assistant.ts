@@ -28,6 +28,10 @@ function newId() {
 
 export interface UseAssistant {
   state: AssistantState;
+  /** Set once the server has a thread to attach these turns to. */
+  conversationId: string | null;
+  /** True until the previous conversation has been fetched back. */
+  restoring: boolean;
   messages: Message[];
   tools: ToolActivity[];
   writes: MemoryWriteSummary[];
@@ -52,8 +56,13 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
   const [tools, setTools] = useState<ToolActivity[]>([]);
   const [writes, setWrites] = useState<MemoryWriteSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(true);
 
   const abortRef = useRef<AbortController | null>(null);
+  // Mirrors conversationId so `send` and `clear` can read it without listing it
+  // as a dependency and being rebuilt on every turn.
+  const conversationIdRef = useRef<string | null>(null);
   // Held in a ref so `send` does not need them as dependencies, which would
   // rebuild it on every render and defeat the memoisation.
   const callbacksRef = useRef(callbacks);
@@ -62,6 +71,45 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
   });
 
   const busy = state === "thinking" || state === "speaking";
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function restore() {
+      try {
+        const response = await fetch("/api/conversations", {
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+
+        const data = (await response.json()) as {
+          conversation: { id: string } | null;
+          messages: Array<{
+            id: string;
+            role: "user" | "assistant";
+            content: string;
+            createdAt: string;
+          }>;
+        };
+
+        if (controller.signal.aborted || !data.conversation) return;
+
+        // The ref matters as much as the state: `send` reads the ref, so
+        // missing it here would start a new thread on the next message.
+        conversationIdRef.current = data.conversation.id;
+        setConversationId(data.conversation.id);
+        setMessages(data.messages);
+      } catch {
+        // A conversation that will not load is not worth an error message —
+        // the assistant still works, it just starts empty.
+      } finally {
+        if (!controller.signal.aborted) setRestoring(false);
+      }
+    }
+
+    void restore();
+    return () => controller.abort();
+  }, []);
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
@@ -77,6 +125,18 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
     setWrites([]);
     setError(null);
     setState("idle");
+
+    // Clearing means clearing. Leaving the thread on the server would make the
+    // next reload resurrect a conversation the user deliberately dismissed.
+    const id = conversationIdRef.current;
+    conversationIdRef.current = null;
+    setConversationId(null);
+
+    if (id) {
+      void fetch(`/api/conversations?id=${id}`, { method: "DELETE" }).catch(
+        () => {},
+      );
+    }
   }, []);
 
   /** Part 6 drives this from the microphone; nothing else touches it. */
@@ -129,6 +189,9 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: history.map(({ role, content }) => ({ role, content })),
+            ...(conversationIdRef.current
+              ? { conversationId: conversationIdRef.current }
+              : {}),
           }),
           signal: controller.signal,
         });
@@ -197,6 +260,11 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
                 );
                 break;
 
+              case "conversation":
+                conversationIdRef.current = event.id;
+                setConversationId(event.id);
+                break;
+
               case "memory":
                 setWrites(event.writes);
                 break;
@@ -234,6 +302,8 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
 
   return {
     state,
+    conversationId,
+    restoring,
     messages,
     tools,
     writes,

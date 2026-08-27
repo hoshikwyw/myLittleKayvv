@@ -6,6 +6,11 @@ export interface ToolContext {
   signal?: AbortSignal;
   /** Injected rather than read from the clock, so behaviour is testable. */
   now: Date;
+  /**
+   * The stored user message that prompted this turn. Anything written to memory
+   * points back at it, so "why do you think that?" always has an answer.
+   */
+  sourceMessageId?: string;
 }
 
 /**

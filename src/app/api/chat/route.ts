@@ -4,6 +4,11 @@ import { buildToolRegistry, MemoryWriteLog, runAgent } from "@/lib/agent";
 import type { ConversationTurn } from "@/lib/llm";
 import { configured } from "@/lib/env";
 import type { ChatStreamEvent } from "@/types";
+import {
+  appendMessage,
+  ensureConversation,
+  titleFromFirstMessage,
+} from "@/lib/memory/conversations";
 
 export const dynamic = "force-dynamic";
 /** Vercel Hobby caps functions at 30s. Fail cleanly rather than being killed. */
@@ -19,6 +24,8 @@ const RequestSchema = z.object({
     )
     .min(1)
     .max(100),
+  /** Omitted on the first turn; the server returns the id it created. */
+  conversationId: z.uuid().optional(),
 });
 
 function encodeEvent(event: ChatStreamEvent): Uint8Array {
@@ -55,6 +62,35 @@ export async function POST(request: Request) {
   );
 
   const provider = getProvider();
+  const persist = configured.database();
+
+  // Persistence must never be the reason a reply fails. If any of this throws,
+  // the conversation still happens — it simply is not remembered.
+  let conversationId: string | undefined;
+  let userMessageId: string | undefined;
+
+  if (persist) {
+    try {
+      conversationId = await ensureConversation(parsed.data.conversationId);
+
+      const lastUserMessage = [...parsed.data.messages]
+        .reverse()
+        .find((m) => m.role === "user");
+
+      if (lastUserMessage) {
+        userMessageId = await appendMessage(
+          conversationId,
+          "user",
+          lastUserMessage.content,
+        );
+        await titleFromFirstMessage(conversationId, lastUserMessage.content);
+      }
+    } catch {
+      conversationId = undefined;
+      userMessageId = undefined;
+    }
+  }
+
   // Scoped to this turn so concurrent requests cannot see each other's writes.
   const writeLog = new MemoryWriteLog();
   const tools = buildToolRegistry(writeLog);
@@ -71,6 +107,12 @@ export async function POST(request: Request) {
         }
       };
 
+      // Told to the client first, so a reload can pick the thread back up even
+      // if the reply itself fails halfway through.
+      if (conversationId) send({ type: "conversation", id: conversationId });
+
+      let reply = "";
+
       try {
         for await (const event of runAgent({
           provider,
@@ -85,9 +127,11 @@ export async function POST(request: Request) {
             },
           }),
           signal: request.signal,
+          sourceMessageId: userMessageId,
         })) {
           switch (event.type) {
             case "text":
+              reply += event.delta;
               send({ type: "text", delta: event.delta });
               break;
             case "tool_start":
@@ -112,6 +156,14 @@ export async function POST(request: Request) {
               break;
           }
         }
+        if (conversationId && reply.trim()) {
+          try {
+            await appendMessage(conversationId, "assistant", reply);
+          } catch {
+            // Same rule: a failed write must not swallow a delivered answer.
+          }
+        }
+
         // Anything written this turn becomes an undo card in the UI.
         const writes = writeLog.drain();
         if (writes.length > 0) send({ type: "memory", writes });

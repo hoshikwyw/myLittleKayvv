@@ -107,6 +107,7 @@ Each part is self-contained, independently verifiable, and ends with a commit.
 | 7 | Maps, Search, Calendar, and local plans | "Find coffee near me" returns real places | **built, awaiting API keys** |
 | 8 | Vercel Cron + Telegram + email fallback | A test date fires a real Telegram message | **built, awaiting DB + bot token** |
 | 9 | Deploy to Vercel, env wiring, cron verification | Live URL, reminders firing from the cloud | **prepared — deploy needs your accounts** |
+| 10 | Conversation persistence and fact provenance | Reload keeps the thread; memories cite their source | **built, awaiting `DATABASE_URL`** |
 
 Parts 0-4 are the spine. Shipping only those would already be useful.
 
@@ -417,7 +418,44 @@ Deployment itself needs authentication to accounts that belong to the user:
 Vercel, Neon, Telegram, Google Cloud. The runbook in `DEPLOY.md` is written to
 be followed step by step, but the steps are theirs to run.
 
-## 15. Open questions
+## 15. Conversation persistence (Part 10)
+
+Added after a review pass, not part of the original plan. The `conversations`
+and `messages` tables had existed since Part 1 with nothing writing to them,
+which left two things wrong:
+
+- The assistant forgot everything on reload. For something whose whole purpose
+  is remembering the people in your life, that is a poor first impression.
+- `memories.source_message_id` was always null, so the Part 4 claim that it
+  "keeps the receipt so you can always see where a fact came from" was untrue.
+
+**Every turn is persisted, and every stored fact points at the message that
+produced it.** `sourceMessageId` travels through `ToolContext` into
+`remember_fact`, so "why do you think that?" now has an answer.
+
+**Persistence never fails a reply.** Every database call on this path is
+wrapped: if the write throws, the conversation still happens, it simply is not
+remembered. An answer already delivered must not be swallowed by bookkeeping.
+
+**The conversation id is sent before the reply starts**, so a reload can pick
+the thread back up even if generation fails halfway through.
+
+**Clearing deletes server-side.** Leaving the row would make the next reload
+resurrect a conversation the user deliberately dismissed.
+
+**Titles come from the first message, not from a model call.** A title is worth
+almost nothing, and spending a request, a second, and free-tier quota on one is
+a poor trade against a 30s ceiling.
+
+**A `conversationIdRef` mirrors the state** so `send` can read it without
+listing it as a dependency and being rebuilt every turn. The restore path writes
+both — setting only the state would silently start a new thread on the next
+message after a reload.
+
+**Without a database it degrades to stateless**, returning an empty conversation
+rather than an error the user can do nothing about.
+
+## 16. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

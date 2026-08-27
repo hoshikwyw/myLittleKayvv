@@ -12,7 +12,9 @@ product; voice is just the interface.
   thinks, and stops the moment you start talking
 - **Knows your day** — its own plan list, plus your Google Calendar
 - **Finds things** — places on Google Maps, answers on Google Search
-- **Remembers people** — birthdays, anniversaries, the details you care about
+- **Remembers people** — birthdays, anniversaries, the details you care about,
+  each fact linked back to the message it came from
+- **Keeps the thread** — conversations survive a reload
 - **Speaks first** — a daily sweep tells you a birthday is coming, via
   Telegram or email. It runs off the database and a cron job, never the model
 

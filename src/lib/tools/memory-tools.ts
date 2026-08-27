@@ -217,7 +217,7 @@ export function createMemoryTools(log: MemoryWriteLog) {
             "when you inferred it from what they said",
         ),
     }),
-    handler: async (input) => {
+    handler: async (input, { sourceMessageId }) => {
       let personId: string | undefined;
 
       if (input.about) {
@@ -230,6 +230,7 @@ export function createMemoryTools(log: MemoryWriteLog) {
         personId,
         kind: input.kind,
         confirmed: input.explicit,
+        sourceMessageId,
       });
 
       log.record({
