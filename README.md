@@ -81,6 +81,7 @@ src/
     voice/       STT/TTS adapters
   db/            Drizzle schema and client
   types/         shared types
+tests/           unit tests for the logic that must not be wrong
 ```
 
 ## Scripts
@@ -89,6 +90,7 @@ src/
 |---|---|
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
+| `npm test` | Unit tests — calendar, reminder rule, voice, calculator |
 | `npm run typecheck` | TypeScript, no emit |
 | `npm run lint` | ESLint |
 | `npm run db:generate` | Generate migrations from schema |

@@ -160,6 +160,21 @@ export async function runReminderSweep(
     targets.map((t) => [`${t.month}-${t.day}`, t.daysAway]),
   );
 
+  // An empty or() produces undefined, which Drizzle treats as "no filter" and
+  // would return every stored date. Cannot happen with MAX_LEAD_DAYS above
+  // zero, but the failure mode is bad enough to guard against explicitly.
+  if (targets.length === 0) {
+    return {
+      today: todayIso,
+      timezone,
+      due: [],
+      skipped: 0,
+      delivered: false,
+      channels: [],
+      errors: [],
+    };
+  }
+
   const dateRows = await db
     .select({
       date: important_dates,

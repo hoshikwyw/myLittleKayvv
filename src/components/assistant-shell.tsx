@@ -84,10 +84,22 @@ export function AssistantShell({
     textareaRef.current?.focus();
   }, [assistant, input]);
 
+  /**
+   * Barge-in.
+   *
+   * Reaching for the microphone while the assistant is mid-answer means "stop,
+   * listen to me" — so it aborts the turn as well as the audio. Cancelling only
+   * the speech is not enough: the response is still streaming, and the next
+   * token would start it talking over you again.
+   */
   const toggleMic = useCallback(() => {
-    if (voice.listening) voice.stopListening();
-    else voice.startListening();
-  }, [voice]);
+    if (voice.listening) {
+      voice.stopListening();
+      return;
+    }
+    if (assistant.busy) assistant.stop();
+    voice.startListening();
+  }, [assistant, voice]);
 
   function handleStop() {
     assistant.stop();
@@ -187,7 +199,6 @@ export function AssistantShell({
               <VoiceOrb
                 state={assistant.state}
                 onClick={voice.capabilities.listen ? toggleMic : undefined}
-                disabled={assistant.busy}
               />
               <p className="text-text-muted max-w-xs text-center text-sm leading-relaxed">
                 {voice.capabilities.listen
@@ -267,15 +278,19 @@ export function AssistantShell({
             <button
               type="button"
               onClick={toggleMic}
-              disabled={assistant.busy && !voice.listening}
-              aria-label={voice.listening ? "Stop listening" : "Talk"}
+              aria-label={
+                voice.listening
+                  ? "Stop listening"
+                  : assistant.busy
+                    ? "Interrupt and talk"
+                    : "Talk"
+              }
               aria-pressed={voice.listening}
               className={cn(
                 "grid size-11 shrink-0 place-items-center rounded-xl border transition-colors",
                 voice.listening
                   ? "border-listening bg-listening/15 text-listening"
                   : "border-border bg-surface text-text-muted hover:text-text",
-                assistant.busy && !voice.listening && "opacity-40",
               )}
             >
               <Mic className="size-5" />

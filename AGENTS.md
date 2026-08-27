@@ -32,6 +32,15 @@ decision log, the risk register, and the part-by-part build plan.
 - Language: the assistant speaks English; it reads and writes both English
   and Burmese.
 
+## Testing
+
+`npm test` runs the unit suite over the logic that must not be wrong: calendar
+and timezone arithmetic, the reminder firing rule, sentence splitting for
+streamed speech, Telegram escaping, and the calculator's refusal to evaluate.
+
+Anything involving a date, a reminder decision, or text handed to a speech
+engine gets a test. Everything else is covered by types and the build.
+
 ## Commit workflow
 
 Work is built in discrete parts. At the end of each part, propose a commit

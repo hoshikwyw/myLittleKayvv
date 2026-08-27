@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { plans, type Plan } from "@/db/schema";
 import { env } from "@/lib/env";
@@ -161,19 +161,4 @@ export async function deletePlan(id: string): Promise<boolean> {
     .where(eq(plans.id, id))
     .returning({ id: plans.id });
   return deleted.length > 0;
-}
-
-/** Used by the reminder sweep in Part 8. */
-export async function plansDueBetween(from: Date, to: Date): Promise<Plan[]> {
-  return getDb()
-    .select()
-    .from(plans)
-    .where(
-      and(
-        eq(plans.status, "pending"),
-        gte(plans.startsAt, from),
-        lt(plans.startsAt, to),
-      ),
-    )
-    .orderBy(asc(plans.startsAt));
 }

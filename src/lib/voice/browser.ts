@@ -73,8 +73,6 @@ export class BrowserVoiceAdapter implements VoiceAdapter {
     recognition.continuous = false;
     recognition.maxAlternatives = 1;
 
-    recognition.onspeechstart = () => options.onSpeechStart?.();
-
     recognition.onresult = (event) => {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];

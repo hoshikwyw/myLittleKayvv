@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { EMBEDDING_DIMENSIONS, memories, people, type Memory } from "@/db/schema";
 import { getProvider } from "@/lib/llm";
@@ -181,14 +181,4 @@ export async function deleteMemory(id: string): Promise<boolean> {
     .where(eq(memories.id, id))
     .returning({ id: memories.id });
   return deleted.length > 0;
-}
-
-/** Facts not attached to anyone, useful when the model asks what it knows. */
-export async function generalMemories(limit = 20): Promise<Memory[]> {
-  return getDb()
-    .select()
-    .from(memories)
-    .where(isNull(memories.personId))
-    .orderBy(sql`${memories.createdAt} DESC`)
-    .limit(limit);
 }

@@ -17,8 +17,6 @@ export interface ListenOptions {
   /** BCP-47, e.g. "en-US". */
   lang?: string;
   onTranscript: (transcript: Transcript) => void;
-  /** Fired when the user's voice is first detected — used for barge-in. */
-  onSpeechStart?: () => void;
   onError?: (message: string) => void;
   /** Always fires when listening stops, however it stopped. */
   onEnd?: () => void;
