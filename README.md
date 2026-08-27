@@ -45,15 +45,34 @@ which subsystems are wired up, is at `/status`.
 
 ### Database setup
 
-Create a free Postgres at [neon.tech](https://neon.tech), copy the connection
-string into `DATABASE_URL` in `.env.local`, then:
+**Locally**, with Docker — no account needed:
 
 ```bash
-npm run db:migrate    # creates the pgvector extension and all seven tables
-curl http://localhost:5173/api/health
+npm run db:local          # Postgres 17 + pgvector in a container on :55432
+npm run db:migrate:local  # creates the extension and all seven tables
 ```
 
-A healthy response lists the tables and reports `"pgvector": true`.
+Then set `DATABASE_URL` in `.env.local`:
+
+```
+DATABASE_URL=postgresql://postgres:devpass@localhost:55432/kayv
+```
+
+`npm run db:local:stop` removes the container when you are done.
+
+**In production**, create a free Postgres at [neon.tech](https://neon.tech), use
+its **pooled** connection string, and run `npm run db:migrate`.
+
+The app picks its driver from the URL: Neon's HTTP driver for Neon, plain
+node-postgres for anything else. Same schema, same SQL.
+
+Check it landed:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:5173/api/health
+```
+
+Look for `"migrated": true` and `"pgvector": true`.
 
 ### Keys you'll need
 
@@ -92,7 +111,9 @@ tests/           unit tests for the logic that must not be wrong
 |---|---|
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
-| `npm test` | Unit tests — calendar, reminder rule, voice, calculator |
+| `npm test` | Full suite. Integration tests skip themselves if no database is up |
+| `npm run db:local` | Postgres + pgvector in Docker, for development and tests |
+| `npm run db:migrate:local` | Apply migrations to the local container |
 | `npm run typecheck` | TypeScript, no emit |
 | `npm run lint` | ESLint |
 | `npm run db:generate` | Generate migrations from schema |

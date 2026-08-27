@@ -12,7 +12,10 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "db:local": "docker run -d --name mylittlekayv-postgres -e POSTGRES_PASSWORD=devpass -e POSTGRES_DB=kayv -p 55432:5432 pgvector/pgvector:pg17",
+    "db:local:stop": "docker rm -f mylittlekayv-postgres",
+    "db:migrate:local": "node scripts/migrate.mjs postgresql://postgres:devpass@localhost:55432/kayv"
   },
   "dependencies": {
     "@google/genai": "^2.18.0",
@@ -22,6 +25,7 @@
     "lucide-react": "^0.550.0",
     "motion": "^12.0.0",
     "next": "16.3.2",
+    "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tailwind-merge": "^3.0.0",
@@ -30,6 +34,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.10",

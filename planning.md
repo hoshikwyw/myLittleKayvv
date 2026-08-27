@@ -98,16 +98,16 @@ Each part is self-contained, independently verifiable, and ends with a commit.
 | Part | Deliverable | Verified by | Status |
 |------|-------------|-------------|--------|
 | 0 | Scaffold: Next.js + TS + Tailwind, tokens, env, structure | `npm run dev` shows the status board | **done** |
-| 1 | DB schema + Drizzle: people, important_dates, plans, memories, conversations | Migration runs against Neon | **schema done, awaiting `DATABASE_URL`** |
+| 1 | DB schema + Drizzle: people, important_dates, plans, memories, conversations | Migration runs against Neon | **done, verified** |
 | 2 | `LLMProvider` interface + Gemini adapter + streaming chat route | Text chat works end to end | **done** |
 | 3 | Tool registry + agent loop (tool calling, multi-turn) | A question that needs a tool gets answered | **done** |
-| 4 | Memory tools + confirm-card UX | "her birthday is March 3" -> card -> DB row | **built, awaiting `DATABASE_URL`** |
+| 4 | Memory tools + confirm-card UX | "her birthday is March 3" -> card -> DB row | **done, verified** |
 | 5 | Assistant shell: conversation, voice orb, state machine | Looks like a real assistant | **done** |
 | 6 | `VoiceAdapter` + browser STT/TTS, barge-in | You talk, it talks back | **done** |
 | 7 | Maps, Search, Calendar, and local plans | "Find coffee near me" returns real places | **built, awaiting API keys** |
-| 8 | Vercel Cron + Telegram + email fallback | A test date fires a real Telegram message | **built, awaiting DB + bot token** |
+| 8 | Vercel Cron + Telegram + email fallback | A test date fires a real Telegram message | **sweep verified; delivery needs a bot token** |
 | 9 | Deploy to Vercel, env wiring, cron verification | Live URL, reminders firing from the cloud | **prepared — deploy needs your accounts** |
-| 10 | Conversation persistence and fact provenance | Reload keeps the thread; memories cite their source | **built, awaiting `DATABASE_URL`** |
+| 10 | Conversation persistence and fact provenance | Reload keeps the thread; memories cite their source | **done, verified** |
 
 Parts 0-4 are the spine. Shipping only those would already be useful.
 
@@ -455,7 +455,47 @@ message after a reload.
 **Without a database it degrades to stateless**, returning an empty conversation
 rather than an error the user can do nothing about.
 
-## 16. Open questions
+## 16. Verification against a real database
+
+The database layer was written across Parts 1, 4, 7, 8, and 10 without ever
+running. That is now closed, using Postgres in Docker rather than waiting on a
+hosted account.
+
+`npm run db:local` starts Postgres 17 with pgvector; `npm run db:migrate:local`
+applies the migration. **The migration ran clean on the first attempt** — all
+seven tables and the vector extension.
+
+**The client picks its driver from the URL.** Neon's HTTP driver only speaks to
+Neon, so anything else goes through node-postgres. Same Drizzle, same schema,
+same SQL; only the transport differs. This means the app runs end to end with no
+Neon account at all, which is what made the verification below possible.
+
+### What was proven
+
+Fourteen integration tests against real Postgres, plus a full pass through the
+running app:
+
+- Person resolution by name, nickname, alias, and case, including an ambiguous
+  prefix correctly returning nothing rather than guessing
+- Updates merging without blanking stored fields
+- Dates deduplicating on repeat, and 31 February rejected
+- The `upcoming` query returning the right rows with the right `daysAway`
+- Semantic recall with live Gemini embeddings: "what food should Nandar avoid"
+  retrieves "allergic to peanuts", sharing no words with the query
+- Conversations replaying in order, and a stored fact carrying a real
+  `source_message_id`
+- The reminder sweep selecting exactly the right row from real data
+
+End to end through the app: one sentence stored a person, a date, and a fact,
+each with an undo card; a later question recalled the fact semantically; and the
+sweep reported "Nan's Birthday is tomorrow (28 August) — turning 28."
+
+### Still unverified
+
+Telegram and email delivery, and the three Google integrations, all need
+credentials. The sweep's selection is proven; the send is not.
+
+## 17. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

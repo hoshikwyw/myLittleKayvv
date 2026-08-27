@@ -34,12 +34,21 @@ decision log, the risk register, and the part-by-part build plan.
 
 ## Testing
 
-`npm test` runs the unit suite over the logic that must not be wrong: calendar
-and timezone arithmetic, the reminder firing rule, sentence splitting for
-streamed speech, Telegram escaping, and the calculator's refusal to evaluate.
+`npm test` runs both suites.
 
-Anything involving a date, a reminder decision, or text handed to a speech
-engine gets a test. Everything else is covered by types and the build.
+**Unit tests** cover the logic that must not be wrong: calendar and timezone
+arithmetic, the reminder firing rule, sentence splitting for streamed speech,
+Telegram escaping, and the calculator's refusal to evaluate.
+
+**Integration tests** run the real memory code against a real Postgres with
+pgvector — person resolution, date storage, semantic recall with live
+embeddings, plans, conversations, and the sweep. Start it with
+`npm run db:local` then `npm run db:migrate:local`. Without a database they skip
+themselves rather than failing, so the suite stays useful anywhere.
+
+Unit tests prove the arithmetic; only the integration tests prove the SQL. A
+change to a query needs the second kind. Anything involving a date, a reminder
+decision, or text handed to a speech engine gets a test.
 
 ## Commit workflow
 
