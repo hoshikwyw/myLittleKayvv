@@ -106,7 +106,7 @@ Each part is self-contained, independently verifiable, and ends with a commit.
 | 6 | `VoiceAdapter` + browser STT/TTS, barge-in | You talk, it talks back | **done** |
 | 7 | Maps, Search, Calendar, and local plans | "Find coffee near me" returns real places | **built, awaiting API keys** |
 | 8 | Vercel Cron + Telegram + email fallback | A test date fires a real Telegram message | **built, awaiting DB + bot token** |
-| 9 | Deploy to Vercel, env wiring, cron verification | Live URL, reminders firing from the cloud | **next** |
+| 9 | Deploy to Vercel, env wiring, cron verification | Live URL, reminders firing from the cloud | **prepared — deploy needs your accounts** |
 
 Parts 0-4 are the spine. Shipping only those would already be useful.
 
@@ -385,7 +385,39 @@ in Yangon, which is a reasonable hour to learn that a birthday is tomorrow.
 **Lead times are capped at 90 days** in the tool schema, matching the sweep's
 lookahead, so nothing can be stored that the sweep would silently never fire.
 
-## 14. Open questions
+## 14. Deployment notes (Part 9)
+
+**No secrets reach the browser.** The built client bundle was scanned for every
+value in `.env.local` and for the variable names themselves, with a positive
+control to prove the scan could actually find things. Nothing present.
+
+**Security headers are set in `next.config.ts`.** This is a single-user
+assistant holding intimate details about people, on a public URL, so the
+defaults are not enough: `nosniff`, `X-Frame-Options: DENY`, a strict referrer
+policy, HSTS, and no `X-Powered-By`. Everything under `/api` is additionally
+`no-store` — every route there is either personal data or an action.
+
+**`Permissions-Policy` allows `microphone=(self)` explicitly.** A default-deny
+policy makes the browser refuse speech recognition silently, with no error
+anywhere, and the voice feature simply stops working.
+
+**`/api/health` is a two-tier probe.** Unauthenticated callers get liveness
+only; the detailed subsystem report sits behind the cron secret, because on a
+public URL an unauthenticated inventory of your integrations is free
+reconnaissance. It reports booleans and table names, never a credential. It also
+distinguishes "database reachable" from "migration actually ran", which is the
+most common broken deploy.
+
+**Deploy is via GitHub rather than the CLI**, which is the supported path for
+cron jobs and gives deploys on push.
+
+### What could not be done here
+
+Deployment itself needs authentication to accounts that belong to the user:
+Vercel, Neon, Telegram, Google Cloud. The runbook in `DEPLOY.md` is written to
+be followed step by step, but the steps are theirs to run.
+
+## 15. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

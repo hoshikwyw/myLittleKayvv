@@ -95,6 +95,11 @@ src/
 | `npm run db:migrate` | Apply migrations |
 | `npm run db:studio` | Browse the database |
 
+## Deploying
+
+See [DEPLOY.md](DEPLOY.md) for the full runbook — database, Telegram bot,
+environment variables, and verifying the cron job actually fires.
+
 ## Architecture and decisions
 
 See [planning.md](planning.md) for the decision log, risk register, and the
