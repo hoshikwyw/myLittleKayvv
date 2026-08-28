@@ -76,6 +76,13 @@ export const people = pgTable(
   (t) => [
     index("people_name_idx").on(t.name),
     index("people_importance_idx").on(t.importance),
+    /**
+     * The agent runs a batch of tool calls concurrently, so remember_person
+     * and remember_date for the same person reach upsertPerson at the same
+     * moment. A find-then-insert cannot be atomic in application code, and the
+     * result was one row per concurrent call. The database has to enforce it.
+     */
+    uniqueIndex("people_name_unique").on(sql`lower(${t.name})`),
   ],
 );
 

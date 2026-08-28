@@ -495,7 +495,45 @@ sweep reported "Nan's Birthday is tomorrow (28 August) — turning 28."
 Telegram and email delivery, and the three Google integrations, all need
 credentials. The sweep's selection is proven; the send is not.
 
-## 17. Open questions
+## 17. Memory page and the duplicate-people bug
+
+**A memory page you can audit.** Everything stored — people with their dates
+and facts, what is coming up, plans, loose notes — on one page at `/memory`,
+each row with a way to forget it. The undo card catches a wrong fact in the
+moment; this catches one weeks later. Forgetting takes two taps, because the
+page is dense with small buttons and a stray one should not quietly erase a
+birthday.
+
+**Unconfirmed facts are labelled `inferred`**, so the ones the assistant guessed
+at are visibly the likelier ones to be wrong.
+
+### The bug this found
+
+Seeding the page through conversation showed a person missing from the write
+log. Chasing it turned up something worse: **concurrent `upsertPerson` calls
+created one row per call.** A stress test produced eight rows for eight
+concurrent calls.
+
+This was reachable in normal use. The agent runs each batch of tool calls
+concurrently through `Promise.all`, so `remember_person("Nandar")` and
+`remember_date(person: "Nandar")` — which the model routinely emits together —
+both ran find-then-insert at the same moment. It had stayed hidden only because
+the person already existed from an earlier run.
+
+Find-then-insert cannot be made atomic in application code, so the database
+enforces it: a unique index on `lower(name)`, with the insert doing
+`ON CONFLICT DO NOTHING` and the loser of the race falling through to the merge
+path. Verified: eight concurrent calls now produce one row, and the merged
+detail survives.
+
+**Tests now clean up after themselves.** The rows left behind by a suite run
+were what masked this in the first place — they turned up in the running app and
+made the next thing looked at inexplicable.
+
+**"Turning" is only used for birthdays.** A person turns 28; a marriage does
+not. Anniversaries read "6 years", memorials "6 years on".
+
+## 18. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

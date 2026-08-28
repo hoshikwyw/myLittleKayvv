@@ -15,6 +15,8 @@ product; voice is just the interface.
 - **Remembers people** — birthdays, anniversaries, the details you care about,
   each fact linked back to the message it came from
 - **Keeps the thread** — conversations survive a reload
+- **Shows its work** — `/memory` lists everything it has stored, with a way to
+  forget any of it
 - **Speaks first** — a daily sweep tells you a birthday is coming, via
   Telegram or email. It runs off the database and a cron job, never the model
 

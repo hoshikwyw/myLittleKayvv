@@ -17,6 +17,7 @@ const map = new Map(
 const base: Omit<DateCandidate, "month" | "day"> = {
   id: "x",
   label: "Birthday",
+  kind: "birthday",
   year: null,
   recurring: true,
   remindDaysBefore: [7, 1, 0],
@@ -91,9 +92,34 @@ test("a one-off date does not recur forever", () => {
 test("a date with no person attached still reads naturally", () => {
   assert.deepEqual(
     run([
-      { ...base, month: 8, day: 24, personName: null, label: "Visa renewal" },
+      {
+        ...base,
+        month: 8,
+        day: 24,
+        personName: null,
+        label: "Visa renewal",
+        kind: "custom",
+      },
     ]).due.map((d) => d.line),
     ["Visa renewal is today."],
+  );
+});
+
+test("an anniversary is not described as turning an age", () => {
+  // A person turns 28; a marriage does not.
+  assert.deepEqual(
+    run([
+      {
+        ...base,
+        month: 8,
+        day: 24,
+        year: 2021,
+        label: "Wedding anniversary",
+        kind: "anniversary",
+        personName: "Su",
+      },
+    ]).due.map((d) => d.line),
+    ["Su's Wedding anniversary is today — 5 years."],
   );
 });
 

@@ -87,31 +87,42 @@ export async function upsertPerson(input: PersonInput): Promise<UpsertResult> {
         notes: input.notes,
         importance: input.importance ?? 0,
       })
+      // The agent runs a batch of tool calls concurrently, so two of them can
+      // reach this line for the same person at once. Find-then-insert cannot
+      // be made atomic in application code; the unique index on lower(name)
+      // decides, and the loser falls through to the update path below.
+      .onConflictDoNothing()
       .returning();
 
-    return { person, created: true };
+    if (person) return { person, created: true };
+  }
+
+  // Either the person already existed, or a concurrent call just created them.
+  const current = existing ?? (await findPerson(input.name));
+  if (!current) {
+    throw new Error(`Could not store or find "${input.name}".`);
   }
 
   const mergedAliases = [
-    ...new Set([...(existing.aliases ?? []), ...(input.aliases ?? [])]),
+    ...new Set([...(current.aliases ?? []), ...(input.aliases ?? [])]),
   ];
 
   const [person] = await db
     .update(people)
     .set({
-      nickname: input.nickname ?? existing.nickname,
+      nickname: input.nickname ?? current.nickname,
       aliases: mergedAliases,
-      relationship: input.relationship ?? existing.relationship,
-      pronouns: input.pronouns ?? existing.pronouns,
+      relationship: input.relationship ?? current.relationship,
+      pronouns: input.pronouns ?? current.pronouns,
       notes: input.notes
-        ? existing.notes
-          ? `${existing.notes}\n${input.notes}`
+        ? current.notes
+          ? `${current.notes}\n${input.notes}`
           : input.notes
-        : existing.notes,
-      importance: input.importance ?? existing.importance,
+        : current.notes,
+      importance: input.importance ?? current.importance,
       updatedAt: new Date(),
     })
-    .where(eq(people.id, existing.id))
+    .where(eq(people.id, current.id))
     .returning();
 
   return { person, created: false };

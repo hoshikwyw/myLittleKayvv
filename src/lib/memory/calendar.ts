@@ -169,6 +169,19 @@ export function formatMonthDay(month: number, day: number): string {
   return `${day} ${MONTH_NAMES[month - 1] ?? "?"}`;
 }
 
+/**
+ * How to say the count of years for a given kind of date.
+ *
+ * A person turns 28; a marriage does not. Saying "turning 6" about a wedding
+ * anniversary is the sort of small wrongness that makes an assistant feel like
+ * it is filling in a template rather than paying attention.
+ */
+export function describeYears(kind: string, years: number): string {
+  if (kind === "birthday") return `turning ${years}`;
+  if (kind === "memorial") return `${years} years on`;
+  return years === 1 ? "1 year" : `${years} years`;
+}
+
 /** "today", "tomorrow", "in 5 days" — phrasing a person would actually use. */
 export function describeDaysAway(daysAway: number): string {
   if (daysAway === 0) return "today";

@@ -42,7 +42,12 @@ describe("memory against real Postgres", () => {
   });
 
   after(async () => {
-    if (reachable) await disconnect();
+    // Leave nothing behind: rows surviving a test run turn up in the running
+    // app and make the next thing you look at inexplicable.
+    if (reachable) {
+      await reset(db);
+      await disconnect();
+    }
   });
 
   dbTest("a person can be found by name, nickname, or alias", async () => {
@@ -263,6 +268,38 @@ describe("memory against real Postgres", () => {
     assert.equal(result.delivered, false);
   });
 
+  dbTest("concurrent upserts cannot create duplicate people", async () => {
+    await reset(db);
+
+    // The agent runs a batch of tool calls through Promise.all, so
+    // remember_person and remember_date for the same person land at the same
+    // moment. Before the unique index on lower(name), this produced one row
+    // per concurrent call.
+    await Promise.all(
+      Array.from({ length: 8 }, (_, i) =>
+        upsertPerson({
+          name: "Nandar",
+          relationship: i === 0 ? "sister" : undefined,
+        }),
+      ),
+    );
+
+    const everyone = await listPeople();
+    assert.equal(everyone.length, 1, "expected exactly one Nandar");
+    // The loser of the race still merges rather than overwriting.
+    assert.equal(everyone[0].relationship, "sister");
+  });
+
+  dbTest("names collide case-insensitively", async () => {
+    await reset(db);
+
+    await upsertPerson({ name: "Nandar" });
+    const { created } = await upsertPerson({ name: "NANDAR" });
+
+    assert.equal(created, false);
+    assert.equal((await listPeople()).length, 1);
+  });
+
   dbTest("everyone is listed, most important first", async () => {
     await reset(db);
     await upsertPerson({ name: "Ordinary", importance: 0 });
@@ -305,7 +342,10 @@ describe("semantic recall", () => {
   });
 
   after(async () => {
-    if (ready) await disconnect();
+    if (ready) {
+      await reset(db);
+      await disconnect();
+    }
   });
 
   function recallTest(name: string, fn: () => Promise<void>) {

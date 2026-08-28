@@ -6,6 +6,7 @@ import type { CalendarDay } from "@/lib/memory/calendar";
 import {
   addDays,
   describeDaysAway,
+  describeYears,
   formatMonthDay,
   todayIn,
   upcomingTargets,
@@ -55,6 +56,8 @@ export interface SweepResult {
 export interface DateCandidate {
   id: string;
   label: string;
+  /** Drives the phrasing: a person turns 28, a marriage does not. */
+  kind: string;
   month: number;
   day: number;
   year: number | null;
@@ -110,6 +113,7 @@ export function selectDueDates(
       daysAway,
       line: describeDate(
         date.label,
+        date.kind,
         date.personName,
         daysAway,
         yearsOnNextOccurrence(date, today),
@@ -125,16 +129,17 @@ export function selectDueDates(
 /** "Nandar's Birthday is tomorrow — she turns 28." */
 function describeDate(
   label: string,
+  kind: string,
   personName: string | null,
   daysAway: number,
-  turning: number | null,
+  years: number | null,
   month: number,
   day: number,
 ): string {
   const who = personName ? `${personName}'s ` : "";
   const when = describeDaysAway(daysAway);
   const on = daysAway === 0 ? "" : ` (${formatMonthDay(month, day)})`;
-  const age = turning !== null ? ` — turning ${turning}` : "";
+  const age = years !== null ? ` — ${describeYears(kind, years)}` : "";
 
   return `${who}${label} is ${when}${on}${age}.`;
 }
@@ -198,6 +203,7 @@ export async function runReminderSweep(
     dateRows.map(({ date, personName, personNickname }) => ({
       id: date.id,
       label: date.label,
+      kind: date.kind,
       month: date.month,
       day: date.day,
       year: date.year,

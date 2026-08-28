@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowUp,
   Check,
   Loader2,
+  Brain,
   Mic,
   Square,
   Trash2,
@@ -183,12 +185,21 @@ export function AssistantShell({
             </button>
           )}
 
-          <a
+          <Link
+            href="/memory"
+            aria-label="What Kayv remembers"
+            title="What Kayv remembers"
+            className="text-text-faint hover:text-accent grid size-8 place-items-center rounded-md transition-colors"
+          >
+            <Brain className="size-4" />
+          </Link>
+
+          <Link
             href="/status"
             className="text-text-faint hover:text-text px-2 text-xs transition-colors"
           >
             status
-          </a>
+          </Link>
         </div>
       </header>
 
