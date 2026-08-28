@@ -104,6 +104,25 @@ export interface ConversationSummary {
   lastMessageAt: string;
 }
 
+/** One conversation by id, or null. Never invents a row. */
+export async function getConversation(
+  id: string,
+): Promise<ConversationSummary | null> {
+  const [row] = await getDb()
+    .select()
+    .from(conversations)
+    .where(eq(conversations.id, id))
+    .limit(1);
+
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    title: row.title,
+    lastMessageAt: row.lastMessageAt.toISOString(),
+  };
+}
+
 export async function latestConversation(): Promise<ConversationSummary | null> {
   const [row] = await getDb()
     .select()

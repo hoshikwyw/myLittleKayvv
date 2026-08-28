@@ -7,7 +7,11 @@ import { recallMemories, storeMemory } from "@/lib/memory/facts";
 import { addPlan, completePlanByTitle, listPlans } from "@/lib/memory/plans";
 import {
   appendMessage,
+  createConversation,
+  deleteConversation,
   ensureConversation,
+  getConversation,
+  listConversations,
   loadTurns,
   latestConversation,
   titleFromFirstMessage,
@@ -213,6 +217,48 @@ describe("memory against real Postgres", () => {
     // An existing id is reused rather than starting a second thread.
     assert.equal(await ensureConversation(id), id);
     assert.ok(userMessageId);
+  });
+
+  dbTest("threads are listed newest first and survive starting a new one", async () => {
+    await reset(db);
+
+    const first = await createConversation();
+    await appendMessage(first, "user", "What is Nan allergic to?");
+    await titleFromFirstMessage(first, "What is Nan allergic to?");
+
+    const second = await createConversation();
+    await appendMessage(second, "user", "Plan the weekend trip.");
+    await titleFromFirstMessage(second, "Plan the weekend trip.");
+
+    const threads = await listConversations();
+    assert.equal(threads.length, 2);
+    // Most recently active first.
+    assert.equal(threads[0].id, second);
+
+    // Starting a new thread must leave the earlier one intact — tidying the
+    // screen and destroying history are different intentions.
+    assert.equal((await getConversation(first))?.title, "What is Nan allergic to?");
+  });
+
+  dbTest("an unknown conversation id returns nothing rather than a made-up row", async () => {
+    await reset(db);
+    assert.equal(
+      await getConversation("00000000-0000-4000-8000-000000000000"),
+      null,
+    );
+  });
+
+  dbTest("deleting a thread takes its messages with it", async () => {
+    await reset(db);
+
+    const id = await createConversation();
+    await appendMessage(id, "user", "hello");
+    await appendMessage(id, "assistant", "hi");
+    assert.equal((await loadTurns(id)).length, 2);
+
+    assert.equal(await deleteConversation(id), true);
+    assert.equal(await getConversation(id), null);
+    assert.equal((await loadTurns(id)).length, 0);
   });
 
   dbTest("a stored fact keeps a link to the message that produced it", async () => {

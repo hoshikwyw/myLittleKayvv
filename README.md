@@ -15,7 +15,8 @@ product; voice is just the interface.
 - **Finds things** — places on Google Maps, answers on Google Search
 - **Remembers people** — birthdays, anniversaries, the details you care about,
   each fact linked back to the message it came from
-- **Keeps the thread** — conversations survive a reload
+- **Keeps the thread** — conversations survive a reload, and past ones stay
+  reachable from the history panel
 - **Shows its work** — `/memory` lists everything it has stored, with a way to
   forget any of it
 - **Speaks first** — a daily sweep tells you a birthday is coming, via

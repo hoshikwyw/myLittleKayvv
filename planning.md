@@ -569,7 +569,29 @@ A test caught the behaviour; the cause took a byte-level look to find.
 
 The whole tree was then swept for stray control characters: 69 files, clean.
 
-## 19. Open questions
+## 19. Conversation threads
+
+Clearing the screen used to delete the conversation outright. Tidying a view and
+destroying history are different intentions, and only one of them can be undone
+— so the button is now **New conversation**, and the previous thread is kept.
+
+Past threads have been stored since Part 10 with no way back to them, and
+`listConversations` sat unused the whole time. A history panel in the header now
+lists them newest first, switches between them, and deletes one explicitly.
+Deletion cascades to its messages.
+
+**The list is fetched on the click, not in an effect keyed to the open state**,
+which would set state during render and cascade.
+
+**The panel closes on an outside click or Escape.** A panel that swallows the
+next click anywhere is worse than no panel.
+
+**Loading a thread reads the real row.** The route previously fabricated
+`{ id, title: null, lastMessageAt: now }` when given an id — data that was
+simply untrue, and would have been wrong the moment anything relied on it. An
+unknown id now returns nothing rather than an invented conversation.
+
+## 20. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

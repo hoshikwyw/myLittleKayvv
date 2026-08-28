@@ -39,7 +39,10 @@ export interface UseAssistant {
   busy: boolean;
   send: (text: string) => Promise<void>;
   stop: () => void;
-  clear: () => void;
+  /** Begin a fresh thread. The current one is kept and stays in history. */
+  startNew: () => void;
+  /** Load a stored thread back into view. */
+  switchTo: (id: string) => Promise<void>;
   setListening: (listening: boolean) => void;
 }
 
@@ -117,25 +120,48 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
     setState("idle");
   }, []);
 
-  const clear = useCallback(() => {
+  /**
+   * Start a fresh thread.
+   *
+   * The previous one is kept. Clearing the screen used to delete it outright,
+   * which quietly destroyed history to tidy a view — the two are different
+   * intentions and only one of them is reversible.
+   */
+  const startNew = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
+
+    conversationIdRef.current = null;
+    setConversationId(null);
     setMessages([]);
     setTools([]);
     setWrites([]);
     setError(null);
     setState("idle");
+  }, []);
 
-    // Clearing means clearing. Leaving the thread on the server would make the
-    // next reload resurrect a conversation the user deliberately dismissed.
-    const id = conversationIdRef.current;
-    conversationIdRef.current = null;
-    setConversationId(null);
+  const switchTo = useCallback(async (id: string) => {
+    abortRef.current?.abort();
+    abortRef.current = null;
 
-    if (id) {
-      void fetch(`/api/conversations?id=${id}`, { method: "DELETE" }).catch(
-        () => {},
-      );
+    setTools([]);
+    setWrites([]);
+    setError(null);
+    setState("idle");
+
+    try {
+      const response = await fetch(`/api/conversations?id=${id}`);
+      if (!response.ok) throw new Error("Could not load that conversation");
+
+      const data = (await response.json()) as {
+        messages: Message[];
+      };
+
+      conversationIdRef.current = id;
+      setConversationId(id);
+      setMessages(data.messages);
+    } catch {
+      setError("That conversation would not load.");
     }
   }, []);
 
@@ -311,7 +337,8 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
     busy,
     send,
     stop,
-    clear,
+    startNew,
+    switchTo,
     setListening,
   };
 }

@@ -10,13 +10,14 @@ import {
   Brain,
   Mic,
   Square,
-  Trash2,
+  SquarePen,
   Volume2,
   VolumeX,
   X,
 } from "lucide-react";
 import { useAssistant } from "@/hooks/use-assistant";
 import { useVoice } from "@/hooks/use-voice";
+import { ConversationHistory } from "./conversation-history";
 import { DailyBriefPanel } from "./daily-brief";
 import { MemoryCard } from "./memory-card";
 import { VoiceOrb } from "./voice-orb";
@@ -179,15 +180,26 @@ export function AssistantShell({
             <button
               type="button"
               onClick={() => {
-                assistant.clear();
+                assistant.startNew();
                 voice.cancelSpeech();
               }}
-              aria-label="Clear conversation"
-              title="Clear conversation"
-              className="text-text-faint hover:text-danger grid size-8 place-items-center rounded-md transition-colors"
+              aria-label="New conversation"
+              title="New conversation"
+              className="text-text-faint hover:text-accent grid size-8 place-items-center rounded-md transition-colors"
             >
-              <Trash2 className="size-4" />
+              <SquarePen className="size-4" />
             </button>
+          )}
+
+          {memoryReady && (
+            <ConversationHistory
+              currentId={assistant.conversationId}
+              onSelect={(id) => {
+                voice.cancelSpeech();
+                if (id) void assistant.switchTo(id);
+                else assistant.startNew();
+              }}
+            />
           )}
 
           <Link
