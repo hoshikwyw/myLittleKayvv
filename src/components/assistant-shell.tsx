@@ -17,9 +17,11 @@ import {
 } from "lucide-react";
 import { useAssistant } from "@/hooks/use-assistant";
 import { useVoice } from "@/hooks/use-voice";
+import { DailyBriefPanel } from "./daily-brief";
 import { MemoryCard } from "./memory-card";
 import { VoiceOrb } from "./voice-orb";
 import { cn } from "@/lib/utils";
+import type { DailyBrief } from "@/lib/memory/brief";
 
 /**
  * The assistant surface.
@@ -33,11 +35,14 @@ import { cn } from "@/lib/utils";
 interface AssistantShellProps {
   assistantName: string;
   memoryReady: boolean;
+  /** Null when there is no database, or the brief could not be loaded. */
+  brief: DailyBrief | null;
 }
 
 export function AssistantShell({
   assistantName,
   memoryReady,
+  brief,
 }: AssistantShellProps) {
   const [input, setInput] = useState("");
 
@@ -211,11 +216,15 @@ export function AssistantShell({
                 state={assistant.state}
                 onClick={voice.capabilities.listen ? toggleMic : undefined}
               />
-              <p className="text-text-muted max-w-xs text-center text-sm leading-relaxed">
-                {voice.capabilities.listen
-                  ? "Tap to talk, or type. Tell me something worth remembering."
-                  : "Ask me anything, or tell me something worth remembering."}
-              </p>
+              {brief ? (
+                <DailyBriefPanel brief={brief} />
+              ) : (
+                <p className="text-text-muted max-w-xs text-center text-sm leading-relaxed">
+                  {voice.capabilities.listen
+                    ? "Tap to talk, or type. Tell me something worth remembering."
+                    : "Ask me anything, or tell me something worth remembering."}
+                </p>
+              )}
             </div>
           ) : (
             assistant.messages.map((message) => (

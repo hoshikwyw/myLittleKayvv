@@ -533,7 +533,43 @@ made the next thing looked at inexplicable.
 **"Turning" is only used for birthdays.** A person turns 28; a marriage does
 not. Anniversaries read "6 years", memorials "6 years on".
 
-## 18. Open questions
+## 18. The daily brief
+
+Opening the assistant used to show an orb and an invitation to type. It now
+shows the day: what is on, who has a birthday coming, sorted so that today and
+tomorrow lead. An assistant that knows a birthday is tomorrow and waits to be
+asked is not much of an assistant.
+
+**A glance, not a dashboard.** Six items at most, a week ahead at most. It sits
+in the empty state and disappears the moment a conversation starts, so it can
+never compete with what is being said.
+
+**Undated tasks are excluded.** A task with no deadline is still a task, but it
+has no place in a brief about today — it stays on the memory page.
+
+**Timing is phrased relative to now.** "today at 14:30", not "Mon 24 Aug,
+14:30". The same reasoning as not saying "turning 6" about a wedding: the
+assistant should sound like it knows what day it is.
+
+**A quiet day says so.** "Nothing on this week" rather than an empty frame.
+
+**The brief never breaks the app.** If the database is unreachable the load is
+caught and the assistant opens as it always did.
+
+### An invisible bug worth recording
+
+The first version of the relative phrasing silently failed: plans showed "today"
+instead of "today at 14:30". The regex in the source was
+`/\b(\d{2}:\d{2})\b/` — except those `\b` were literal **backspace control
+characters**, written by a scripted edit whose escaping collapsed them.
+
+Both `grep` and a file read displayed the line as correct, because a backspace
+is invisible in a terminal. Only `JSON.stringify` on the raw bytes showed it.
+A test caught the behaviour; the cause took a byte-level look to find.
+
+The whole tree was then swept for stray control characters: 69 files, clean.
+
+## 19. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

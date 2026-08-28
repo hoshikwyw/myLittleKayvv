@@ -13,6 +13,7 @@ import {
   titleFromFirstMessage,
 } from "@/lib/memory/conversations";
 import { runReminderSweep } from "@/lib/reminders/sweep";
+import { loadDailyBrief } from "@/lib/memory/brief";
 
 /**
  * These run the real code against a real Postgres with pgvector.
@@ -298,6 +299,51 @@ describe("memory against real Postgres", () => {
 
     assert.equal(created, false);
     assert.equal((await listPeople()).length, 1);
+  });
+
+  dbTest("the daily brief leads with what is imminent", async () => {
+    await reset(db);
+    const now = new Date("2026-08-24T06:00:00Z");
+
+    const { person } = await upsertPerson({ name: "Nandar", nickname: "Nan" });
+    // Tomorrow.
+    await addImportantDate({
+      personId: person.id,
+      label: "Birthday",
+      kind: "birthday",
+      month: 8,
+      day: 25,
+      year: 1998,
+    });
+    // Later in the week.
+    await addImportantDate({ label: "Rent due", month: 8, day: 30 });
+    await addPlan({ title: "Dentist", date: "2026-08-24", time: "14:30" });
+    // Undated tasks have no place in a brief about today.
+    await addPlan({ title: "Someday project" });
+
+    const brief = await loadDailyBrief(now);
+
+    assert.equal(brief.quiet, false);
+    assert.ok(!brief.items.some((i) => i.what === "Someday project"));
+
+    // Imminent items sort to the front.
+    assert.ok(brief.items[0].imminent);
+
+    const dentist = brief.items.find((i) => i.what === "Dentist");
+    // A brief about today says "today", not the date.
+    assert.equal(dentist?.when, "today at 14:30");
+
+    const birthday = brief.items.find((i) => i.what.includes("Birthday"));
+    assert.match(birthday!.when, /tomorrow/);
+  });
+
+  dbTest("an empty brief says so rather than showing a blank frame", async () => {
+    await reset(db);
+    const brief = await loadDailyBrief(new Date("2026-08-24T06:00:00Z"));
+
+    assert.equal(brief.quiet, true);
+    assert.equal(brief.items.length, 0);
+    assert.match(brief.today, /August/);
   });
 
   dbTest("everyone is listed, most important first", async () => {

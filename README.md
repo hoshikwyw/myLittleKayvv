@@ -10,7 +10,8 @@ product; voice is just the interface.
 
 - **Talk to it** — by voice or by text, about anything. It speaks as it
   thinks, and stops the moment you start talking
-- **Knows your day** — its own plan list, plus your Google Calendar
+- **Knows your day** — opens with a brief of what is on and who to remember,
+  plus its own plan list and your Google Calendar
 - **Finds things** — places on Google Maps, answers on Google Search
 - **Remembers people** — birthdays, anniversaries, the details you care about,
   each fact linked back to the message it came from
