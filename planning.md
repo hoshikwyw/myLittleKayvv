@@ -591,7 +591,42 @@ next click anywhere is worse than no panel.
 simply untrue, and would have been wrong the moment anything relied on it. An
 unknown id now returns nothing rather than an invented conversation.
 
-## 20. Open questions
+## 20. Correcting what is remembered
+
+The memory page could delete but not correct. If a name was stored slightly
+wrong or a date landed a day off, the only route was to destroy the row and
+re-tell it — losing when the fact was learned and its link back to the message
+that produced it. For a memory system that is the wrong trade.
+
+People, dates, and notes are now editable in place, via `PATCH /api/memory`.
+
+**Only the fields sent are touched.** A form showing four of a person's six
+fields must not blank the two it does not show. An empty string means "clear
+this", which is deliberately different from a field being absent.
+
+**An empty numeric field means unknown.** A birth year nobody knows is a real
+state, and not the same as zero.
+
+**Editing a note re-embeds it.** Otherwise recall keeps matching the old
+wording and the correction is invisible to the part of the system that uses it
+most. Verified end to end: correcting "allergic to peanuts" to "allergic to
+shellfish" changed the stored vector, and asking "what seafood should Nandar
+avoid" then returned the corrected note at 0.85 similarity.
+
+**An edited note becomes confirmed.** It was written by the owner, so it is no
+longer the assistant's guess.
+
+**A corrected date clears `last_notified_on`.** Whatever was sent about the old
+date has no bearing on the new one.
+
+**Partial date edits are validated against what is stored**, not in isolation,
+so changing only the month still catches 31 February.
+
+**Failed embeddings do not lose the correction**, same rule as storing: the
+text is saved with a null vector, which drops it out of recall until backfilled
+rather than throwing the edit away.
+
+## 21. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

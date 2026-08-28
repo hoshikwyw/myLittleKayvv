@@ -9,6 +9,7 @@ import { configured, env } from "@/lib/env";
 import { loadMemoryOverview } from "@/lib/memory/overview";
 import { describeYears } from "@/lib/memory/calendar";
 import { ForgetButton } from "@/components/forget-button";
+import { InlineEdit } from "@/components/inline-edit";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,8 @@ export const dynamic = "force-dynamic";
  *
  * The counterpart to the undo card: that catches a wrong fact in the moment,
  * this catches one weeks later. Nothing should be stored about the people in
- * someone's life without them being able to look at it and take it back.
+ * someone's life without them being able to look at it, correct it, and take
+ * it back.
  */
 
 function Empty({ children }: { children: React.ReactNode }) {
@@ -79,7 +81,8 @@ export default async function MemoryPage() {
             What {env.assistantName} remembers
           </h1>
           <p className="text-text-muted text-sm">
-            Everything stored, and a way to take any of it back.
+            Everything stored. Correct anything that is wrong, forget anything
+            that should not be here.
           </p>
         </div>
         <Link
@@ -137,28 +140,58 @@ export default async function MemoryPage() {
                     key={person.id}
                     className="border-border bg-surface flex flex-col gap-3 rounded-xl border px-4 py-3.5"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="text-sm font-medium">
-                          {person.name}
-                          {person.nickname && (
-                            <span className="text-text-muted font-normal">
-                              {" "}
-                              · {person.nickname}
-                            </span>
-                          )}
+                    <div className="flex items-start gap-2">
+                      <InlineEdit
+                        kind="person"
+                        id={person.id}
+                        label={person.name}
+                        fields={[
+                          {
+                            name: "name",
+                            label: "Name",
+                            value: person.name,
+                            required: true,
+                          },
+                          {
+                            name: "nickname",
+                            label: "Called",
+                            value: person.nickname ?? "",
+                          },
+                          {
+                            name: "relationship",
+                            label: "Relationship",
+                            value: person.relationship ?? "",
+                          },
+                          {
+                            name: "pronouns",
+                            label: "Pronouns",
+                            value: person.pronouns ?? "",
+                            placeholder: "only if stated",
+                          },
+                        ]}
+                      >
+                        <span className="flex flex-col gap-0.5">
+                          <span className="text-sm font-medium">
+                            {person.name}
+                            {person.nickname && (
+                              <span className="text-text-muted font-normal">
+                                {" "}
+                                · {person.nickname}
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-text-muted text-xs">
+                            {[
+                              person.relationship,
+                              person.pronouns,
+                              person.aliases.length > 0 &&
+                                `also: ${person.aliases.join(", ")}`,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ") || "no details yet"}
+                          </span>
                         </span>
-                        <span className="text-text-muted text-xs">
-                          {[
-                            person.relationship,
-                            person.pronouns,
-                            person.aliases.length > 0 &&
-                              `also: ${person.aliases.join(", ")}`,
-                          ]
-                            .filter(Boolean)
-                            .join(" · ") || "no details yet"}
-                        </span>
-                      </div>
+                      </InlineEdit>
                       <ForgetButton
                         kind="person"
                         id={person.id}
@@ -183,15 +216,48 @@ export default async function MemoryPage() {
                               className="text-accent size-3.5 shrink-0"
                               aria-hidden="true"
                             />
-                            <span className="min-w-0 flex-1 truncate">
-                              <span className="font-medium">{date.label}</span>
-                              <span className="text-text-muted">
-                                {" "}
-                                · {date.when} · {date.nextIn}
-                                {date.turning !== null &&
-                                  ` · ${describeYears(date.kind, date.turning)}`}
+                            <InlineEdit
+                              kind="date"
+                              id={date.id}
+                              label={`${person.name}'s ${date.label}`}
+                              fields={[
+                                {
+                                  name: "label",
+                                  label: "What",
+                                  value: date.label,
+                                  required: true,
+                                },
+                                {
+                                  name: "day",
+                                  label: "Day",
+                                  value: String(date.dayOfMonth),
+                                  numeric: true,
+                                },
+                                {
+                                  name: "month",
+                                  label: "Month",
+                                  value: String(date.monthOfYear),
+                                  numeric: true,
+                                },
+                                {
+                                  name: "year",
+                                  label: "Year",
+                                  value: date.year === null ? "" : String(date.year),
+                                  numeric: true,
+                                  placeholder: "unknown",
+                                },
+                              ]}
+                            >
+                              <span className="block truncate">
+                                <span className="font-medium">{date.label}</span>
+                                <span className="text-text-muted">
+                                  {" "}
+                                  · {date.when} · {date.nextIn}
+                                  {date.turning !== null &&
+                                    ` · ${describeYears(date.kind, date.turning)}`}
+                                </span>
                               </span>
-                            </span>
+                            </InlineEdit>
                             <ForgetButton
                               kind="date"
                               id={date.id}
@@ -213,17 +279,31 @@ export default async function MemoryPage() {
                               className="text-text-faint mt-0.5 size-3.5 shrink-0"
                               aria-hidden="true"
                             />
-                            <span className="text-text-muted min-w-0 flex-1 leading-relaxed">
-                              {fact.content}
-                              {!fact.confirmed && (
-                                // Inferred rather than stated, so it is the
-                                // likelier one to be wrong.
-                                <span className="text-text-faint">
-                                  {" "}
-                                  · inferred
-                                </span>
-                              )}
-                            </span>
+                            <InlineEdit
+                              kind="fact"
+                              id={fact.id}
+                              label="this note"
+                              fields={[
+                                {
+                                  name: "content",
+                                  label: "Note",
+                                  value: fact.content,
+                                  required: true,
+                                },
+                              ]}
+                            >
+                              <span className="text-text-muted block leading-relaxed">
+                                {fact.content}
+                                {!fact.confirmed && (
+                                  // Inferred rather than stated, so it is the
+                                  // likelier one to be wrong.
+                                  <span className="text-text-faint">
+                                    {" "}
+                                    · inferred
+                                  </span>
+                                )}
+                              </span>
+                            </InlineEdit>
                             <ForgetButton
                               kind="fact"
                               id={fact.id}

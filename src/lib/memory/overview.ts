@@ -32,6 +32,10 @@ export interface PersonDate {
   id: string;
   label: string;
   kind: string;
+  /** Raw parts, so the edit form can show what is actually stored. */
+  dayOfMonth: number;
+  monthOfYear: number;
+  year: number | null;
   when: string;
   /** Null when the year is unknown, so no age can be worked out. */
   turning: number | null;
@@ -107,6 +111,9 @@ export async function loadMemoryOverview(
       id: row.id,
       label: row.label,
       kind: row.kind,
+      dayOfMonth: row.day,
+      monthOfYear: row.month,
+      year: row.year,
       when: formatMonthDay(row.month, row.day),
       turning: yearsOnNextOccurrence(row, today),
       daysAway,

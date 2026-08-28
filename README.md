@@ -18,7 +18,7 @@ product; voice is just the interface.
 - **Keeps the thread** — conversations survive a reload, and past ones stay
   reachable from the history panel
 - **Shows its work** — `/memory` lists everything it has stored, with a way to
-  forget any of it
+  correct or forget any of it
 - **Speaks first** — a daily sweep tells you a birthday is coming, via
   Telegram or email. It runs off the database and a cron job, never the model
 

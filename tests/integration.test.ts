@@ -1,6 +1,8 @@
 import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { connect, disconnect, isReachable, reset } from "./helpers/db";
+import { eq as eqFn } from "drizzle-orm";
+import { important_dates as schemaImportantDates } from "@/db/schema";
 import { findPerson, listPeople, personProfile, upsertPerson } from "@/lib/memory/people";
 import { addImportantDate, upcomingDates } from "@/lib/memory/dates";
 import { recallMemories, storeMemory } from "@/lib/memory/facts";
@@ -17,6 +19,11 @@ import {
   titleFromFirstMessage,
 } from "@/lib/memory/conversations";
 import { runReminderSweep } from "@/lib/reminders/sweep";
+import {
+  updateImportantDate,
+  updateMemoryContent,
+  updatePerson,
+} from "@/lib/memory/edit";
 import { loadDailyBrief } from "@/lib/memory/brief";
 
 /**
@@ -390,6 +397,104 @@ describe("memory against real Postgres", () => {
     assert.equal(brief.quiet, true);
     assert.equal(brief.items.length, 0);
     assert.match(brief.today, /August/);
+  });
+
+  dbTest("editing a person touches only the fields sent", async () => {
+    await reset(db);
+
+    const { person } = await upsertPerson({
+      name: "Nandar",
+      nickname: "Nan",
+      relationship: "sister",
+      notes: "loves the sea",
+    });
+
+    const updated = await updatePerson(person.id, {
+      nickname: "Nan Nan",
+      pronouns: "she/her",
+    });
+
+    assert.equal(updated?.nickname, "Nan Nan");
+    assert.equal(updated?.pronouns, "she/her");
+    // Untouched fields survive: a form showing three fields must not blank
+    // the three it does not show.
+    assert.equal(updated?.relationship, "sister");
+    assert.equal(updated?.notes, "loves the sea");
+    assert.equal(updated?.name, "Nandar");
+  });
+
+  dbTest("an empty string clears a field, which is not the same as omitting it", async () => {
+    await reset(db);
+    const { person } = await upsertPerson({ name: "Nandar", relationship: "sister" });
+
+    const updated = await updatePerson(person.id, { relationship: "" });
+    assert.equal(updated?.relationship, null);
+  });
+
+  dbTest("a person cannot be renamed to nothing", async () => {
+    await reset(db);
+    const { person } = await upsertPerson({ name: "Nandar" });
+    await assert.rejects(() => updatePerson(person.id, { name: "   " }));
+  });
+
+  dbTest("a corrected date is validated and becomes un-notified", async () => {
+    await reset(db);
+
+    const stored = await addImportantDate({
+      label: "Birthday",
+      kind: "birthday",
+      month: 8,
+      day: 29,
+      year: 1998,
+    });
+
+    // Pretend the sweep already fired for it today.
+    await updateImportantDate(stored.id, { day: 28 });
+
+    const [row] = await db
+      .select()
+      .from(schemaImportantDates)
+      .where(eqFn(schemaImportantDates.id, stored.id));
+
+    assert.equal(row.day, 28);
+    assert.equal(row.month, 8);
+    assert.equal(row.year, 1998);
+    // A corrected date has not been notified about, whatever happened before.
+    assert.equal(row.lastNotifiedOn, null);
+
+    // A partial edit is still checked against what is stored.
+    await assert.rejects(() => updateImportantDate(stored.id, { month: 2, day: 31 }));
+  });
+
+  dbTest("editing a fact re-embeds it so recall follows the correction", async () => {
+    await reset(db);
+
+    const memory = await storeMemory({
+      content: "Nandar is allergic to peanuts.",
+    });
+    assert.ok(memory.embedding, "expected an embedding to begin with");
+
+    const updated = await updateMemoryContent(
+      memory.id,
+      "Nandar is allergic to shellfish, not peanuts.",
+    );
+
+    assert.equal(updated?.content, "Nandar is allergic to shellfish, not peanuts.");
+    // An edited note was written by the owner, so it is no longer a guess.
+    assert.equal(updated?.confirmed, true);
+
+    // The vector must change, or recall keeps matching the old wording and the
+    // correction is invisible to the part of the system that uses it most.
+    assert.notDeepEqual(updated?.embedding, memory.embedding);
+
+    const hits = await recallMemories({ query: "what seafood should Nandar avoid" });
+    assert.match(hits[0]?.content ?? "", /shellfish/);
+  });
+
+  dbTest("a note cannot be edited to nothing", async () => {
+    await reset(db);
+    const memory = await storeMemory({ content: "Something worth keeping." });
+    await assert.rejects(() => updateMemoryContent(memory.id, "   "));
   });
 
   dbTest("everyone is listed, most important first", async () => {
