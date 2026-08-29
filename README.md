@@ -66,8 +66,8 @@ DATABASE_URL=postgresql://postgres:devpass@localhost:55432/kayv
 
 `npm run db:local:stop` removes the container when you are done.
 
-**In production**, create a free Postgres at [neon.tech](https://neon.tech), use
-its **pooled** connection string, and run `npm run db:migrate`.
+**In production**, use [Neon](https://neon.com) — step-by-step instructions in
+**[SETUP-NEON.md](SETUP-NEON.md)**.
 
 The app picks its driver from the URL: Neon's HTTP driver for Neon, plain
 node-postgres for anything else. Same schema, same SQL.

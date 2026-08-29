@@ -12,7 +12,8 @@ schedule, security headers in `next.config.ts`, and a readiness probe at
 
 Reminders and memory do not exist without this.
 
-1. Create a project at [neon.tech](https://neon.tech) — free, no card.
+1. Create a project at [neon.com](https://neon.com) — free, no card.
+   Step-by-step: **[SETUP-NEON.md](SETUP-NEON.md)**.
 2. Copy the **pooled** connection string. It looks like:
    `postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/neondb?sslmode=require`
 3. Put it in `.env.local` as `DATABASE_URL`.
