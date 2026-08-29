@@ -51,7 +51,11 @@ export function HudPanel({
         "hud-frame glass pointer-events-auto flex flex-col overflow-hidden rounded-sm border",
         "transition-colors duration-200",
         live ? "hud-frame-live border-accent/50" : "border-border",
-        maximised ? "fixed inset-3 z-40 md:inset-8" : "max-h-full",
+        // Full window, edge to edge. The panel is glass, so what it covers
+        // stays visible and blurred behind it.
+        maximised
+          ? "fixed inset-0 z-50 rounded-none border-x-0 border-b-0"
+          : "max-h-full",
         className,
       )}
       style={live ? { boxShadow: "0 0 40px -20px var(--accent)" } : undefined}

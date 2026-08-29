@@ -34,19 +34,28 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    /**
+     * Browser extensions write their own attributes onto the two outermost
+     * elements before React hydrates — `data-hwp-extension` on <html>,
+     * `cz-shortcut-listen` on <body> — and React reports each as a
+     * server/client mismatch. Nothing in our markup is wrong and there is
+     * nothing to fix, so the warning is suppressed here.
+     *
+     * `suppressHydrationWarning` covers only the element's own attributes and
+     * text, never its descendants, so this stays confined to the two elements
+     * extensions actually touch. Everything rendered inside still reports
+     * normally — which is how a genuine mismatch in the reactor's tick marks
+     * was caught rather than hidden.
+     */
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      /**
-       * Browser extensions write their own attributes onto <html> before
-       * React hydrates, which React then reports as a server/client mismatch.
-       * Nothing here is wrong and there is nothing to fix in our markup, so
-       * the warning is suppressed on this element only — never deeper, where
-       * a real mismatch would be worth hearing about.
-       */
       suppressHydrationWarning
     >
-      <body className="bg-bg text-text flex min-h-full flex-col font-sans">
+      <body
+        className="bg-bg text-text flex min-h-full flex-col font-sans"
+        suppressHydrationWarning
+      >
         {children}
       </body>
     </html>

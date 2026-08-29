@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Activity,
   Brain,
@@ -252,21 +253,30 @@ export function HudWorkspace({
         <div className="flex flex-col gap-3">{column("right")}</div>
       </div>
 
-      {maximised && (
-        <>
-          {/*
-            Clicking away is how a full-screen thing is usually dismissed, so
-            the backdrop is a real button rather than a decorative div.
-          */}
-          <button
-            type="button"
-            onClick={() => setPanel(maximised.id, "open")}
-            aria-label={`Leave full screen`}
-            className="fixed inset-0 z-30 cursor-default bg-black/70 backdrop-blur-sm"
-          />
-          {renderPanel(maximised)}
-        </>
-      )}
+      {/*
+        A full-screen panel is rendered into <body>.
+
+        Left in the layout tree it inherits whatever the workspace is doing —
+        flex sizing, clipping, stacking — and ends up positioned against a
+        containing block rather than the window. A portal removes every one of
+        those influences, which is what "full screen" has to mean.
+      */}
+      {maximised &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <>
+            {/* Clicking away is how a full-screen thing is normally dismissed,
+                so the backdrop is a real button rather than a bare div. */}
+            <button
+              type="button"
+              onClick={() => setPanel(maximised.id, "open")}
+              aria-label="Leave full screen"
+              className="fixed inset-0 z-40 cursor-default bg-black/70 backdrop-blur-md"
+            />
+            {renderPanel(maximised)}
+          </>,
+          document.body,
+        )}
 
       {/* The dock. Everything the header used to hold lives here. */}
       <div className="glass border-border relative z-20 shrink-0 border-t">
