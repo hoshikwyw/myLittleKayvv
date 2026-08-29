@@ -1,9 +1,12 @@
 import { z } from "zod";
 import {
   addPlan,
+  asRecurring,
   completePlanByTitle,
   listPlans,
 } from "@/lib/memory/plans";
+import { describeRecurrence } from "@/lib/memory/recurrence";
+import { env } from "@/lib/env";
 import { defineTool } from "./types";
 import type { MemoryWriteLog } from "./memory-tools";
 
@@ -37,22 +40,55 @@ export function createPlanTools(log: MemoryWriteLog) {
         .describe("HH:mm, 24-hour, in the user's timezone. Omit for all day."),
       location: z.string().max(160).optional(),
       details: z.string().max(500).optional(),
+      repeat: z
+        .enum(["none", "daily", "weekly", "monthly", "yearly"])
+        .default("none")
+        .describe(
+          "How often it comes back. Use this for anything the user says " +
+            'happens regularly — "every morning", "on Sundays", "on the 1st".',
+        ),
+      repeat_days: z
+        .array(z.number().int().min(0).max(6))
+        .max(7)
+        .optional()
+        .describe(
+          "For a weekly repeat, which days it lands on. 0 is Sunday. Omit " +
+            "and it repeats on the same weekday as the start date.",
+        ),
     }),
-    handler: async (input) => {
-      const plan = await addPlan(input);
+    handler: async (input, { now }) => {
+      const plan = await addPlan(
+        {
+          ...input,
+          recurrence: input.repeat,
+          recurrenceDays: input.repeat_days,
+        },
+        // addPlan anchors a repeat to today when no date is given.
+        now,
+      );
+
+      const repeats = asRecurring(plan)
+        ? describeRecurrence(asRecurring(plan)!)
+        : null;
 
       log.record({
         kind: "plan",
         id: plan.id,
-        summary: plan.startsAt
-          ? `${plan.title} — ${input.date}${input.time ? ` ${input.time}` : ""}`
-          : plan.title,
+        summary: [
+          plan.title,
+          plan.startsAt &&
+            `${new Intl.DateTimeFormat("en-CA", { timeZone: env.timezone }).format(plan.startsAt)}${input.time ? ` ${input.time}` : ""}`,
+          repeats,
+        ]
+          .filter(Boolean)
+          .join(" — "),
       });
 
       return {
         id: plan.id,
         title: plan.title,
         scheduled: Boolean(plan.startsAt),
+        repeats,
       };
     },
   });
@@ -84,6 +120,7 @@ export function createPlanTools(log: MemoryWriteLog) {
           when: plan.when ?? "no date set",
           where: plan.where,
           daysAway: plan.daysAway,
+          repeats: plan.repeats,
         })),
       };
     },

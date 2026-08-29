@@ -718,7 +718,49 @@ notes — is combined in SQL at write time. Fifteen rounds, nothing lost.
 Related: a JavaScript array bound as a single parameter is not a Postgres array
 literal there either. Each alias is bound separately.
 
-## 23. Open questions
+## 23. Repeating plans
+
+Daily life is mostly repeating — medicine, a weekly call, rent on the 1st — and
+a to-do list that can only hold one-off items is one you stop trusting. Plans
+now carry a recurrence: daily, weekly with named weekdays, monthly, or yearly.
+
+**The occurrence rule is pure and separately tested**, for the same reason the
+date-firing rule is: it decides whether a reminder fires. Ten tests cover
+month-end clamping, leap days, and the "nothing fires before it starts" rule —
+"every Tuesday" said on a Wednesday means next Tuesday, not retroactively.
+
+**Month-end clamps rather than skips.** Someone paying rent on the 31st still
+pays it in November; a 29 February plan is observed on the 28th in a common
+year. Skipping would be the wrong answer to an edge case, not a safe one.
+
+**Occurrences are matched in JavaScript, not by a date window.** A repeating
+plan's next occurrence is not a stored timestamp — "every Tuesday" has no row
+for next Tuesday — so `starts_at BETWEEN` would silently miss every repeating
+plan. One person's list is small enough that correctness beats an index here.
+
+**`notified_at` became `last_notified_on`.** A date rather than a timestamp,
+shared by one-off and repeating plans alike: a one-off only ever falls due on
+its own day, so "once per day" and "once ever" are the same guarantee for it,
+and one mechanism is easier to reason about than two.
+
+### A bug this found
+
+**A repeat with no start date silently became an undated task.** The recurrence
+had nothing to anchor to, so the plan vanished from the brief and never fired.
+The tool happened to default the date, but the invariant belongs with the data:
+`addPlan` now anchors a repeat to today, which is what "every morning" said
+today means anyway.
+
+### Known limit: time of day
+
+A plan stored for 21:00 is reported in the morning digest, not at 21:00. Vercel
+Hobby runs cron once a day, so there is no run near nine in the evening to send
+it. Firing punctually needs a scheduler that can run hourly — a free external
+pinger against `/api/cron/reminders` would do it, and the sweep is already
+idempotent so extra runs are harmless. Deliberately not half-built: a reminder
+that arrives at the wrong time is worse than one that arrives as a digest.
+
+## 24. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

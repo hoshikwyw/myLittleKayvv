@@ -155,6 +155,20 @@ export const planSourceEnum = pgEnum("plan_source", [
   "google_calendar",
 ]);
 
+/**
+ * How often a plan comes back.
+ *
+ * Daily life is mostly repeating — medicine, a weekly call, rent on the 1st —
+ * and a to-do list that can only hold one-off items is one you stop trusting.
+ */
+export const planRecurrenceEnum = pgEnum("plan_recurrence", [
+  "none",
+  "daily",
+  "weekly",
+  "monthly",
+  "yearly",
+]);
+
 export const plans = pgTable(
   "plans",
   {
@@ -171,11 +185,29 @@ export const plans = pgTable(
     status: planStatusEnum("status").notNull().default("pending"),
     source: planSourceEnum("source").notNull().default("user"),
 
+    recurrence: planRecurrenceEnum("recurrence").notNull().default("none"),
+    /**
+     * Which weekdays a weekly plan lands on, 0 = Sunday. Empty means "the same
+     * weekday it started on", which is what someone means by "every Tuesday"
+     * when they only said it once.
+     */
+    recurrenceDays: smallint("recurrence_days")
+      .array()
+      .notNull()
+      .default(sql`'{}'::smallint[]`),
+
     /** Stable id from an external calendar, so re-syncing updates not duplicates. */
     externalId: text("external_id"),
 
     remindAt: timestamp("remind_at", { withTimezone: true }),
-    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    /**
+     * The day this plan was last notified about, in the owner's timezone.
+     *
+     * A date rather than a timestamp, and shared by one-off and recurring
+     * plans alike: a one-off only ever falls due on its own day, so
+     * "once per day" and "once ever" are the same guarantee for it.
+     */
+    lastNotifiedOn: date("last_notified_on"),
 
     createdAt,
     updatedAt,

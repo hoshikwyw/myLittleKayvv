@@ -13,7 +13,7 @@ product; voice is just the interface.
 - **Reachable from Telegram** — message the bot from anywhere and it is the
   same assistant, with the same memory
 - **Knows your day** — opens with a brief of what is on and who to remember,
-  plus its own plan list and your Google Calendar
+  plus its own plan list, repeating tasks, and your Google Calendar
 - **Finds things** — places on Google Maps, answers on Google Search
 - **Remembers people** — birthdays, anniversaries, the details you care about,
   each fact linked back to the message it came from

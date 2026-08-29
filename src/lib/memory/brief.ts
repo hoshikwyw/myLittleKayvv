@@ -16,6 +16,8 @@ import { listPlans, type PlanView } from "./plans";
 
 export interface BriefItem {
   id: string;
+  /** "every day", for a repeating plan. */
+  repeats?: string | null;
   /** "Nan's Birthday", "Buy a gift" */
   what: string;
   /** "tomorrow", "today at 14:30" */
@@ -84,6 +86,7 @@ export async function loadDailyBrief(
         what: plan.title,
         when: phrasePlan(plan),
         kind: "plan" as const,
+        repeats: plan.repeats,
         imminent: (plan.daysAway ?? 99) <= 1,
       })),
   ];

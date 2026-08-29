@@ -596,7 +596,7 @@ describe("memory against real Postgres", () => {
 
     // This runs only after a successful delivery, which a dry run never
     // reaches — long enough for a broken array binding to hide here.
-    await markNotified([date.id], [plan.id], "2026-08-28", now);
+    await markNotified([date.id], [plan.id], "2026-08-28");
 
     const [storedDate] = await db
       .select()
@@ -606,8 +606,92 @@ describe("memory against real Postgres", () => {
 
     // And the sweep now stays silent, which is the whole point.
     const again = await runReminderSweep(now, { dryRun: true });
-    assert.equal(again.due.filter((d) => d.kind === "date").length, 0);
+    assert.equal(again.due.length, 0);
+    // Both the date and the plan were marked, so both are skipped.
+    assert.equal(again.skipped, 2);
+  });
+
+  dbTest("repeating plans come round and stay once-per-day", async () => {
+    await reset(db);
+    const sat = new Date("2026-08-29T06:00:00Z"); // Saturday
+    const sun = new Date("2026-08-30T06:00:00Z");
+
+    await addPlan({
+      title: "Take medicine",
+      date: "2026-08-29",
+      time: "21:00",
+      recurrence: "daily",
+    });
+    await addPlan({
+      title: "Call mum",
+      date: "2026-08-29",
+      recurrence: "weekly",
+      recurrenceDays: [0], // Sundays
+    });
+
+    // Saturday: only the daily one.
+    const saturday = await runReminderSweep(sat, { dryRun: true });
+    assert.deepEqual(
+      saturday.due.map((d) => d.line.split(" —")[0]),
+      ["Take medicine"],
+    );
+    assert.match(saturday.due[0].line, /every day/);
+
+    // Sunday: both.
+    const sunday = await runReminderSweep(sun, { dryRun: true });
+    assert.equal(sunday.due.length, 2);
+    assert.ok(sunday.due.some((d) => d.line.startsWith("Call mum")));
+
+    // Marked as sent, Saturday goes quiet.
+    await markNotified([], saturday.due.map((d) => d.id), "2026-08-29");
+    const again = await runReminderSweep(sat, { dryRun: true });
+    assert.equal(again.due.length, 0);
     assert.equal(again.skipped, 1);
+
+    // But it comes back the next day — that is the point of a repeat.
+    const nextDay = await runReminderSweep(sun, { dryRun: true });
+    assert.ok(nextDay.due.some((d) => d.line.startsWith("Take medicine")));
+  });
+
+  dbTest("a repeat with no date given is anchored to today", async () => {
+    await reset(db);
+    const sat = new Date("2026-08-29T06:00:00Z"); // Saturday
+
+    // Without an anchor a recurrence has nothing to repeat from, and the plan
+    // silently becomes an undated task that never fires.
+    await addPlan({ title: "Take medicine", time: "21:00", recurrence: "daily" }, sat);
+
+    const listed = await listPlans(7, sat);
+    const medicine = listed.find((p) => p.title === "Take medicine");
+
+    assert.equal(medicine?.daysAway, 0, "should land today");
+    assert.equal(medicine?.repeats, "every day");
+    assert.match(medicine!.when!, /21:00/);
+
+    // And it actually fires.
+    const swept = await runReminderSweep(sat, { dryRun: true });
+    assert.ok(swept.due.some((d) => d.line.startsWith("Take medicine")));
+  });
+
+  dbTest("a repeating plan is listed on the day it next lands", async () => {
+    await reset(db);
+    const sat = new Date("2026-08-29T06:00:00Z");
+
+    // Started in January, so a naive listing would still say "1 Jan".
+    await addPlan({ title: "Pay rent", date: "2026-01-01", recurrence: "monthly" });
+    await addPlan({ title: "Someday project" });
+
+    const listed = await listPlans(7, sat);
+
+    const rent = listed.find((p) => p.title === "Pay rent");
+    assert.equal(rent?.daysAway, 3); // 1 September
+    assert.match(rent!.when!, /1 Sept/);
+    assert.equal(rent?.repeats, "on the 1st of each month");
+
+    // An undated task is still a task.
+    const someday = listed.find((p) => p.title === "Someday project");
+    assert.equal(someday?.when, null);
+    assert.equal(someday?.repeats, null);
   });
 
   dbTest("everyone is listed, most important first", async () => {

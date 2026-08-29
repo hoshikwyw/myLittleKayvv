@@ -331,6 +331,7 @@ export default async function MemoryPage() {
                       <span className="truncate text-sm">{plan.title}</span>
                       <span className="text-text-muted text-xs">
                         {plan.when ?? "no date set"}
+                        {plan.repeats && ` · ${plan.repeats}`}
                         {plan.where && ` · ${plan.where}`}
                       </span>
                     </span>

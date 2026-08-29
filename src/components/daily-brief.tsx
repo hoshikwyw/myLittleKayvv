@@ -53,7 +53,14 @@ export function DailyBriefPanel({ brief }: { brief: DailyBrief }) {
                 />
               )}
 
-              <span className="min-w-0 flex-1 truncate">{item.what}</span>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate">{item.what}</span>
+                {item.repeats && (
+                  <span className="text-text-faint text-[11px]">
+                    {item.repeats}
+                  </span>
+                )}
+              </span>
               <span className="text-text-muted shrink-0 text-xs">
                 {item.when}
               </span>

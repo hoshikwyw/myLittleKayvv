@@ -2,7 +2,14 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { plans, type Plan } from "@/db/schema";
 import { env } from "@/lib/env";
+import type { CalendarDay } from "./calendar";
 import { addDays, todayIn, zonedTimeToUtc } from "./calendar";
+import {
+  describeRecurrence,
+  planOccursOn,
+  type Recurrence,
+  type RecurringPlan,
+} from "./recurrence";
 
 /**
  * The user's own plans and tasks.
@@ -20,6 +27,27 @@ export interface PlanInput {
   date?: string;
   /** Wall-clock time, "HH:mm". Absent means all day. */
   time?: string;
+  recurrence?: Recurrence;
+  /** Weekdays for a weekly plan, 0 = Sunday. */
+  recurrenceDays?: number[];
+}
+
+/** The calendar day a plan starts on, read in the owner's timezone. */
+export function planStartDay(plan: Plan) {
+  if (!plan.startsAt) return null;
+  return todayIn(env.timezone, plan.startsAt);
+}
+
+/** A plan reduced to what the recurrence rule needs. */
+export function asRecurring(plan: Plan): RecurringPlan | null {
+  const start = planStartDay(plan);
+  if (!start) return null;
+
+  return {
+    start,
+    recurrence: plan.recurrence as Recurrence,
+    recurrenceDays: plan.recurrenceDays ?? [],
+  };
 }
 
 export function parsePlanMoment(
@@ -50,8 +78,24 @@ export function parsePlanMoment(
   };
 }
 
-export async function addPlan(input: PlanInput): Promise<Plan> {
-  const { startsAt, allDay } = parsePlanMoment(input.date, input.time);
+export async function addPlan(
+  input: PlanInput,
+  now: Date = new Date(),
+): Promise<Plan> {
+  /**
+   * A repeat needs something to repeat from.
+   *
+   * Without a start date the recurrence has no anchor, and the plan silently
+   * degrades into an undated task — it disappears from the brief and never
+   * fires. "Every morning", said today, means starting today.
+   */
+  const date =
+    input.date ??
+    (input.recurrence && input.recurrence !== "none"
+      ? new Intl.DateTimeFormat("en-CA", { timeZone: env.timezone }).format(now)
+      : undefined);
+
+  const { startsAt, allDay } = parsePlanMoment(date, input.time);
 
   const [created] = await getDb()
     .insert(plans)
@@ -61,6 +105,8 @@ export async function addPlan(input: PlanInput): Promise<Plan> {
       location: input.location,
       startsAt,
       allDay,
+      recurrence: input.recurrence ?? "none",
+      recurrenceDays: input.recurrenceDays ?? [],
       source: "assistant",
     })
     .returning();
@@ -75,10 +121,30 @@ export interface PlanView {
   where: string | null;
   status: string;
   daysAway: number | null;
+  /** "every Tuesday", or null for a one-off. */
+  repeats: string | null;
 }
 
-function describeWhen(plan: Plan): string | null {
+/**
+ * When the given occurrence falls.
+ *
+ * A repeating plan is shown on the day it next lands, not the day it first
+ * did — "every Tuesday" starting in January should not still read "6 Jan".
+ * The time of day comes from the stored start, which is where it lives.
+ */
+function describeWhen(plan: Plan, occurrence: CalendarDay): string | null {
   if (!plan.startsAt) return null;
+
+  const at = zonedTimeToUtc(
+    occurrence.year,
+    occurrence.month,
+    occurrence.day,
+    // Read the stored hour and minute back in the owner's timezone rather than
+    // the server's, or a 14:30 plan drifts by the offset.
+    Number(hourMinuteIn(plan.startsAt).hour),
+    Number(hourMinuteIn(plan.startsAt).minute),
+    env.timezone,
+  );
 
   return new Intl.DateTimeFormat("en-GB", {
     timeZone: env.timezone,
@@ -86,7 +152,21 @@ function describeWhen(plan: Plan): string | null {
     day: "numeric",
     month: "short",
     ...(plan.allDay ? {} : { hour: "2-digit", minute: "2-digit", hour12: false }),
-  }).format(plan.startsAt);
+  }).format(at);
+}
+
+function hourMinuteIn(at: Date): { hour: string; minute: string } {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: env.timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(at);
+
+  return {
+    hour: parts.find((p) => p.type === "hour")?.value ?? "0",
+    minute: parts.find((p) => p.type === "minute")?.value ?? "0",
+  };
 }
 
 /**
@@ -100,32 +180,66 @@ export async function listPlans(
   now: Date = new Date(),
 ): Promise<PlanView[]> {
   const today = todayIn(env.timezone, now);
-  const start = zonedTimeToUtc(today.year, today.month, today.day, 0, 0, env.timezone);
-  const endDay = addDays(today, withinDays + 1);
-  const end = zonedTimeToUtc(endDay.year, endDay.month, endDay.day, 0, 0, env.timezone);
 
+  /**
+   * Every pending plan, filtered in JavaScript rather than by a date window.
+   *
+   * A repeating plan's next occurrence is not a stored timestamp — "every
+   * Tuesday" has no row for next Tuesday — so a `starts_at BETWEEN` query
+   * would miss all of them. At one person's scale the whole list is small, and
+   * correctness matters more here than an index.
+   */
   const rows = await getDb()
     .select()
     .from(plans)
-    .where(
-      and(
-        eq(plans.status, "pending"),
-        sql`(${plans.startsAt} IS NULL OR (${plans.startsAt} >= ${start} AND ${plans.startsAt} < ${end}))`,
-      ),
-    )
+    .where(eq(plans.status, "pending"))
     .orderBy(sql`${plans.startsAt} ASC NULLS LAST`)
-    .limit(50);
+    .limit(200);
 
-  return rows.map((plan) => ({
-    id: plan.id,
-    title: plan.title,
-    when: describeWhen(plan),
-    where: plan.location,
-    status: plan.status,
-    daysAway: plan.startsAt
-      ? Math.floor((plan.startsAt.getTime() - start.getTime()) / 86_400_000)
-      : null,
-  }));
+  const views: PlanView[] = [];
+
+  for (const plan of rows) {
+    const recurring = asRecurring(plan);
+
+    // A task with no deadline is still a task, and silently hiding it is how
+    // a to-do list loses trust.
+    if (!recurring) {
+      views.push({
+        id: plan.id,
+        title: plan.title,
+        when: null,
+        where: plan.location,
+        status: plan.status,
+        daysAway: null,
+        repeats: null,
+      });
+      continue;
+    }
+
+    // The first day in the window this plan actually lands on.
+    let daysAway: number | null = null;
+    for (let offset = 0; offset <= withinDays; offset++) {
+      if (planOccursOn(recurring, addDays(today, offset))) {
+        daysAway = offset;
+        break;
+      }
+    }
+    if (daysAway === null) continue;
+
+    views.push({
+      id: plan.id,
+      title: plan.title,
+      when: describeWhen(plan, addDays(today, daysAway)),
+      where: plan.location,
+      status: plan.status,
+      daysAway,
+      repeats: describeRecurrence(recurring),
+    });
+  }
+
+  return views.sort(
+    (a, b) => (a.daysAway ?? Infinity) - (b.daysAway ?? Infinity),
+  );
 }
 
 /** Match by title so the model can complete a plan without tracking ids. */

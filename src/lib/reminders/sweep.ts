@@ -1,20 +1,20 @@
-import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { getDb } from "@/db";
 import { important_dates, people, plans } from "@/db/schema";
 import { env } from "@/lib/env";
 import type { CalendarDay } from "@/lib/memory/calendar";
 import {
-  addDays,
   describeDaysAway,
   describeYears,
   formatMonthDay,
   todayIn,
   upcomingTargets,
   yearsOnNextOccurrence,
-  zonedTimeToUtc,
 } from "@/lib/memory/calendar";
 import { notify } from "@/lib/notify";
 import { contextForPeople, contextLines } from "./context";
+import { asRecurring } from "@/lib/memory/plans";
+import { describeRecurrence, planOccursOn } from "@/lib/memory/recurrence";
 
 /**
  * The daily reminder sweep.
@@ -227,34 +227,36 @@ export async function runReminderSweep(
   );
 
   const firedDateIds = due.map((d) => d.id);
+  let skippedPlans = 0;
 
-  // Plans landing today, using the same once-per-day guard.
-  const dayStart = zonedTimeToUtc(today.year, today.month, today.day, 0, 0, timezone);
-  const tomorrow = addDays(today, 1);
-  const dayEnd = zonedTimeToUtc(
-    tomorrow.year,
-    tomorrow.month,
-    tomorrow.day,
-    0,
-    0,
-    timezone,
-  );
-
+  /**
+   * Plans landing today.
+   *
+   * Filtered in JavaScript rather than by a date window: a repeating plan's
+   * next occurrence is not a stored timestamp — "every Tuesday" has no row for
+   * next Tuesday — so `starts_at BETWEEN` would silently miss every one of
+   * them. One person's plan list is small enough that this costs nothing.
+   */
   const planRows = await db
     .select()
     .from(plans)
-    .where(
-      and(
-        eq(plans.status, "pending"),
-        sql`${plans.startsAt} >= ${dayStart}`,
-        sql`${plans.startsAt} < ${dayEnd}`,
-        sql`${plans.notifiedAt} IS NULL`,
-      ),
-    );
+    .where(eq(plans.status, "pending"))
+    .limit(200);
 
   const firedPlanIds: string[] = [];
 
   for (const plan of planRows) {
+    const recurring = asRecurring(plan);
+    if (!recurring) continue;
+    if (!planOccursOn(recurring, today)) continue;
+
+    // Same once-per-day guard as dates. A one-off only ever falls due on its
+    // own day, so "once per day" and "once ever" mean the same thing for it.
+    if (plan.lastNotifiedOn === todayIso) {
+      skippedPlans++;
+      continue;
+    }
+
     const at = plan.allDay
       ? "today"
       : `today at ${new Intl.DateTimeFormat("en-GB", {
@@ -264,11 +266,15 @@ export async function runReminderSweep(
           hour12: false,
         }).format(plan.startsAt!)}`;
 
+    const repeats = describeRecurrence(recurring);
+
     due.push({
       kind: "plan",
       id: plan.id,
       daysAway: 0,
-      line: `${plan.title} — ${at}${plan.location ? `, ${plan.location}` : ""}.`,
+      line: `${plan.title} — ${at}${plan.location ? `, ${plan.location}` : ""}${
+        repeats ? ` (${repeats})` : ""
+      }.`,
     });
     firedPlanIds.push(plan.id);
   }
@@ -293,7 +299,7 @@ export async function runReminderSweep(
     today: todayIso,
     timezone,
     due: due.sort((a, b) => a.daysAway - b.daysAway),
-    skipped,
+    skipped: skipped + skippedPlans,
     delivered: false,
     channels: [],
     errors: [],
@@ -324,7 +330,7 @@ export async function runReminderSweep(
   // Only mark as notified once something actually went out. Marking on failure
   // would lose the reminder entirely, which is the one outcome worth avoiding.
   if (outcome.delivered) {
-    await markNotified(firedDateIds, firedPlanIds, todayIso, now);
+    await markNotified(firedDateIds, firedPlanIds, todayIso);
   }
 
   return result;
@@ -345,7 +351,6 @@ export async function markNotified(
   dateIds: string[],
   planIds: string[],
   todayIso: string,
-  now: Date,
 ): Promise<void> {
   const db = getDb();
 
@@ -359,7 +364,7 @@ export async function markNotified(
   if (planIds.length > 0) {
     await db
       .update(plans)
-      .set({ notifiedAt: now })
+      .set({ lastNotifiedOn: todayIso })
       .where(inArray(plans.id, planIds));
   }
 }
