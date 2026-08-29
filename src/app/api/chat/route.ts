@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { buildSystemPrompt, getProvider } from "@/lib/llm";
-import { buildToolRegistry, MemoryWriteLog, runAgent } from "@/lib/agent";
+import {
+  buildToolRegistry,
+  describeAgentError,
+  MemoryWriteLog,
+  runAgent,
+} from "@/lib/agent";
 import type { ConversationTurn } from "@/lib/llm";
 import { configured } from "@/lib/env";
 import type { ChatStreamEvent } from "@/types";
@@ -148,9 +153,7 @@ export async function POST(request: Request) {
             case "error":
               send({
                 type: "error",
-                message: event.retryable
-                  ? "The model is rate limited right now. Give it a moment."
-                  : event.message,
+                message: describeAgentError(event),
                 retryable: event.retryable,
               });
               break;

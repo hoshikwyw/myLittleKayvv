@@ -35,5 +35,6 @@ export function buildToolRegistry(log: MemoryWriteLog): ToolRegistry {
 
 export { MemoryWriteLog };
 export type { MemoryWrite, MemoryWriteKind } from "@/lib/tools/memory-tools";
+export { describeAgentError } from "./errors";
 export { runAgent } from "./loop";
 export type { AgentEvent, AgentOptions } from "./loop";

@@ -626,7 +626,56 @@ so changing only the month still catches 31 February.
 text is saved with a null vector, which drops it out of recall until backfilled
 rather than throwing the edit away.
 
-## 21. Open questions
+## 21. Telegram, both ways
+
+Kayv could send to Telegram; now it listens there too. This is the single
+highest-value thing left, because the barrier to a memory assistant is not
+capability but friction: opening a browser tab to write down "Su's mother's
+birthday is 3 March" is enough work that it does not happen, and an assistant
+you never tell things to is worthless. Messaging a contact from a lock screen
+is not.
+
+**Transport only.** The webhook and the local poller both call the same
+`handleMessage`, which runs the same agent loop, tools, and memory the web uses.
+Nothing about the assistant's behaviour lives here.
+
+**Two locks on the door.** The webhook URL is public, so it checks Telegram's
+own secret header in constant time *and* that the message came from the owner's
+chat id. Either alone is too thin: the header alone would let anyone who
+obtained the secret through, and the chat check alone would leave the endpoint
+open to anyone who found the URL. A stranger gets silence, not a refusal —
+replying would confirm the bot is live.
+
+**Always 200.** A non-200 makes Telegram redeliver the same update, which would
+repeat whatever half-finished thing just failed.
+
+**One thread, shared with the web.** Something said on Telegram appears in the
+history panel, and a question asked there knows what was discussed at a desk an
+hour earlier. For one person, continuity beats isolation.
+
+**Local polling exists so this is testable.** Webhooks need a public URL that a
+laptop does not have. `npm run telegram` long-polls and feeds the identical
+handler, so what is exercised in development is what runs in production.
+
+### Two bugs this found
+
+**The Telegram budget was 20s against the web's 25s** — backwards. Telegram
+shows no partial output, so a turn that runs out of time looks like silence and
+needs *more* headroom, not less. Under a rate-limited free tier this meant
+capture appeared to fail even though the fact had been stored. The webhook now
+gets 25s, bounded by Vercel's 30s kill; local polling has no such ceiling and
+gets 60s.
+
+**A raw Google error object was sent to a phone.** The web route mapped provider
+errors to plain sentences; the Telegram path forwarded `event.message` verbatim.
+Fixed by moving the mapping into `describeAgentError`, shared by both.
+
+Error events now carry an `origin`. Guessing whether a message was ours from its
+shape was fragile and swallowed our own, more specific wording; the loop simply
+says who wrote it. `origin` defaults to `"provider"`, so a caller that forgets
+cannot thereby have a payload forwarded verbatim.
+
+## 22. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

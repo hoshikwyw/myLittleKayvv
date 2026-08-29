@@ -20,7 +20,16 @@ export type AgentEvent =
   | { type: "text"; delta: string }
   | { type: "tool_start"; id: string; name: string; args: Record<string, unknown> }
   | { type: "tool_end"; id: string; name: string; ok: boolean; summary: string }
-  | { type: "error"; message: string; retryable: boolean };
+  | {
+      type: "error";
+      message: string;
+      retryable: boolean;
+      /**
+       * Who wrote this message. Ours are already plain English and worth
+       * showing; a provider's is a payload and must never reach a person.
+       */
+      origin: "agent" | "provider";
+    };
 
 export interface AgentOptions {
   provider: LLMProvider;
@@ -98,6 +107,7 @@ export async function* runAgent(
             type: "error",
             message: event.message,
             retryable: event.retryable,
+            origin: "provider",
           };
           break;
         case "usage":
@@ -161,6 +171,7 @@ export async function* runAgent(
         message:
           "That took longer than I have. Ask me again and I'll pick it up from here.",
         retryable: true,
+        origin: "agent",
       };
       return;
     }
@@ -172,5 +183,6 @@ export async function* runAgent(
     message:
       "I got stuck going back and forth on that one. Try asking a smaller piece of it.",
     retryable: false,
+    origin: "agent",
   };
 }

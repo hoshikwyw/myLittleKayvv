@@ -51,6 +51,13 @@ export const env = {
   get telegramChatId() {
     return required("TELEGRAM_CHAT_ID");
   },
+  /**
+   * Sent by Telegram as a header on every webhook call. Optional only because
+   * local polling does not need it; the webhook refuses to run without one.
+   */
+  get telegramWebhookSecret() {
+    return optional("TELEGRAM_WEBHOOK_SECRET");
+  },
   get resendApiKey() {
     return required("RESEND_API_KEY");
   },

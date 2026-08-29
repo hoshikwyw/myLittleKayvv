@@ -10,6 +10,8 @@ product; voice is just the interface.
 
 - **Talk to it** — by voice or by text, about anything. It speaks as it
   thinks, and stops the moment you start talking
+- **Reachable from Telegram** — message the bot from anywhere and it is the
+  same assistant, with the same memory
 - **Knows your day** — opens with a brief of what is on and who to remember,
   plus its own plan list and your Google Calendar
 - **Finds things** — places on Google Maps, answers on Google Search
@@ -116,6 +118,7 @@ tests/           unit tests for the logic that must not be wrong
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
 | `npm test` | Full suite. Integration tests skip themselves if no database is up |
+| `npm run telegram` | Listen on Telegram from this machine (no public URL needed) |
 | `npm run db:local` | Postgres + pgvector in Docker, for development and tests |
 | `npm run db:migrate:local` | Apply migrations to the local container |
 | `npm run typecheck` | TypeScript, no emit |
