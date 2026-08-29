@@ -15,13 +15,15 @@ import { cn } from "@/lib/utils";
 export function DailyBriefPanel({ brief }: { brief: DailyBrief }) {
   return (
     <div className="flex w-full max-w-sm flex-col gap-2.5">
-      <p className="text-text-faint text-center text-[11px] font-medium tracking-[0.2em] uppercase">
-        {brief.today}
-      </p>
+      <div className="flex items-center gap-3">
+        <span className="rule-fade h-px flex-1 rotate-180" aria-hidden="true" />
+        <span className="hud-label whitespace-nowrap">{brief.today}</span>
+        <span className="rule-fade h-px flex-1" aria-hidden="true" />
+      </div>
 
       {brief.quiet ? (
-        <p className="text-text-muted text-center text-sm">
-          Nothing on this week.
+        <p className="text-text-muted hud-label text-center">
+          no scheduled activity
         </p>
       ) : (
         <ul className="flex flex-col gap-1.5">
@@ -29,11 +31,11 @@ export function DailyBriefPanel({ brief }: { brief: DailyBrief }) {
             <li
               key={item.id}
               className={cn(
-                "animate-rise flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm",
+                "hud-frame animate-rise flex items-center gap-2.5 rounded-sm border px-3.5 py-2.5 text-sm",
                 "transition-colors duration-200",
                 item.imminent
-                  ? "border-accent/40 bg-accent-soft shadow-[0_0_24px_-12px_var(--accent)]"
-                  : "border-border bg-surface shadow-soft hover:border-border-strong",
+                  ? "hud-frame-live border-accent/40 bg-accent-soft shadow-[0_0_28px_-14px_var(--accent)]"
+                  : "border-border bg-surface/70 hover:border-border-strong",
               )}
             >
               {item.kind === "date" ? (
@@ -62,7 +64,7 @@ export function DailyBriefPanel({ brief }: { brief: DailyBrief }) {
                   </span>
                 )}
               </span>
-              <span className="text-text-muted shrink-0 text-xs">
+              <span className="text-text-muted shrink-0 font-mono text-[11px] tracking-wider">
                 {item.when}
               </span>
             </li>

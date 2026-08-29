@@ -130,20 +130,31 @@ export function AssistantShell({
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0, opacity: 0 }}
                 className={cn(
-                  "size-2 rounded-full",
-                  assistant.state === "idle" && "bg-idle",
-                  assistant.state === "listening" && "bg-listening animate-pulse",
-                  assistant.state === "thinking" && "bg-thinking animate-pulse",
-                  assistant.state === "speaking" && "bg-speaking animate-pulse",
-                  assistant.state === "error" && "bg-danger",
+                  "size-2 rounded-full ring-2 ring-offset-2",
+                  "ring-offset-bg",
+                  assistant.state === "idle" && "bg-idle ring-idle/30",
+                  assistant.state === "listening" &&
+                    "bg-listening ring-listening/40 animate-pulse",
+                  assistant.state === "thinking" &&
+                    "bg-thinking ring-thinking/40 animate-pulse",
+                  assistant.state === "speaking" &&
+                    "bg-speaking ring-speaking/40 animate-pulse",
+                  assistant.state === "error" && "bg-danger ring-danger/40",
                 )}
               />
             )}
           </AnimatePresence>
-          <span className="text-sm font-medium">{assistantName}</span>
+          <span className="flex flex-col leading-none">
+            <span className="text-accent font-mono text-sm font-semibold tracking-[0.2em] uppercase">
+              {assistantName}
+            </span>
+            <span className="hud-label mt-1">
+              {memoryReady ? "memory online" : "memory offline"}
+            </span>
+          </span>
           {!memoryReady && (
-            <span className="text-warning border-warning/30 bg-warning/10 rounded-full border px-2 py-0.5 text-[11px]">
-              memory offline
+            <span className="text-warning border-warning/40 bg-warning/10 hud-label border px-2 py-0.5">
+              degraded
             </span>
           )}
         </div>
@@ -249,18 +260,21 @@ export function AssistantShell({
               >
                 <div
                   className={cn(
-                    "animate-rise max-w-[85%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
-                    // Asymmetric corners: the flat one points at its speaker,
-                    // which is what makes a bubble read as coming from someone.
+                    "animate-rise relative max-w-[85%] px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap",
+                    // Clipped corners rather than round ones: the HUD language
+                    // is cut panels, not pills.
+                    "rounded-sm border",
                     message.role === "user"
-                      ? "text-accent-contrast rounded-2xl rounded-br-md shadow-soft"
-                      : "bg-surface border-border rounded-2xl rounded-bl-md border shadow-soft",
+                      ? "border-accent/50 text-text"
+                      : "hud-frame border-border bg-surface shadow-soft",
                   )}
                   style={
                     message.role === "user"
                       ? {
                           background:
-                            "linear-gradient(135deg, var(--accent) 0%, color-mix(in oklab, var(--accent) 70%, var(--accent-2)) 100%)",
+                            "linear-gradient(135deg, color-mix(in oklab, var(--accent) 22%, transparent) 0%, color-mix(in oklab, var(--accent-2) 10%, transparent) 100%)",
+                          boxShadow:
+                            "0 0 24px -12px var(--accent), inset 0 0 0 1px color-mix(in oklab, var(--accent) 12%, transparent)",
                         }
                       : undefined
                   }
@@ -276,7 +290,7 @@ export function AssistantShell({
               {assistant.tools.map((tool) => (
                 <li
                   key={tool.id}
-                  className="text-text-muted flex items-center gap-2 text-xs"
+                  className="text-text-muted flex items-center gap-2 font-mono text-[11px] tracking-wider"
                 >
                   {tool.status === "running" && (
                     <Loader2 className="text-thinking size-3.5 animate-spin" />
@@ -329,7 +343,7 @@ export function AssistantShell({
               }
               aria-pressed={voice.listening}
               className={cn(
-                "grid size-11 shrink-0 place-items-center rounded-xl border transition-colors",
+                "grid size-11 shrink-0 place-items-center rounded-sm border transition-colors",
                 "transition-all duration-200 active:scale-95",
                 voice.listening
                   ? "border-listening bg-listening/15 text-listening shadow-[0_0_20px_-4px_var(--state-listening)]"
@@ -367,7 +381,7 @@ export function AssistantShell({
             onClick={() => (assistant.busy ? handleStop() : submit())}
             disabled={!assistant.busy && displayedInput.trim().length === 0}
             aria-label={assistant.busy ? "Stop" : "Send"}
-            className="text-accent-contrast shadow-soft grid size-11 shrink-0 place-items-center rounded-xl transition-all duration-200 hover:brightness-110 active:scale-95 disabled:opacity-30 disabled:hover:brightness-100"
+            className="text-accent-contrast grid size-11 shrink-0 place-items-center rounded-sm transition-all duration-200 hover:brightness-110 active:scale-95 disabled:opacity-30 disabled:hover:brightness-100"
             style={{
               background:
                 "linear-gradient(135deg, var(--accent) 0%, color-mix(in oklab, var(--accent) 65%, var(--accent-2)) 100%)",

@@ -1,92 +1,95 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Design tokens.
+   Design tokens — HUD direction.
 
-   Dark is the primary look; light is a supported second state, not an
-   afterthought. Every colour used anywhere in the app resolves to a token
-   here, so re-skinning stays a token swap rather than a refactor.
+   The reference is a Rainmeter Iron Man desktop: cyan on near-black, concentric
+   rings, bracket corners, monospace readouts. Taken as a language rather than
+   copied, because that desktop shows telemetry nobody reads closely, and this
+   shows sentences somebody does.
 
-   Beyond flat colour there are three extra families — glow, gradient, and
-   elevation — because depth is what separates "a form on a page" from
-   something that feels built.
+   So: HUD chrome around the edges, quiet high-contrast type in the middle.
+   Every colour still resolves to a token here.
 --------------------------------------------------------------------------- */
 
 :root {
-  /* surfaces */
-  --bg: #f4f6f9;
-  --bg-tint: #e6ecf5;
-  --surface: #ffffff;
-  --surface-2: #eef1f6;
-  --border: #dfe4ec;
-  --border-strong: #c9d2e0;
+  /* surfaces — a cold, deep ground with a blue cast */
+  --bg: #04070d;
+  --bg-tint: #071019;
+  --surface: #0a1420;
+  --surface-2: #0f1d2c;
+  --border: #16344a;
+  --border-strong: #1e5570;
 
   /* text */
-  --text: #0d1526;
-  --text-muted: #52607a;
-  --text-faint: #8b95a8;
+  --text: #dff1fb;
+  --text-muted: #7fa8c4;
+  --text-faint: #4d7a96;
 
-  /* brand */
-  --accent: #0d9488;
-  --accent-2: #0891b2;
-  --accent-soft: #d6f5ef;
-  --accent-contrast: #ffffff;
+  /* brand — electric cyan, with amber as the warning-side counterpoint */
+  --accent: #22d3ee;
+  --accent-2: #38bdf8;
+  --accent-soft: #06283a;
+  --accent-contrast: #02141c;
+  --amber: #fbbf24;
 
   /* assistant states */
-  --state-idle: #94a3b8;
-  --state-listening: #0891b2;
-  --state-thinking: #7c3aed;
-  --state-speaking: #0d9488;
+  --state-idle: #2e7d99;
+  --state-listening: #22d3ee;
+  --state-thinking: #a78bfa;
+  --state-speaking: #34d399;
 
   /* semantic */
-  --danger: #dc2626;
-  --warning: #d97706;
-  --success: #16a34a;
+  --danger: #fb7185;
+  --warning: #fbbf24;
+  --success: #34d399;
 
-  /* depth */
-  --shadow-soft: 0 1px 2px rgb(13 21 38 / 0.04), 0 4px 16px rgb(13 21 38 / 0.06);
-  --shadow-lift: 0 2px 4px rgb(13 21 38 / 0.06), 0 12px 32px rgb(13 21 38 / 0.1);
-  --glow-strength: 0.35;
+  /* depth: on a ground this dark, glow does the work shadows cannot */
+  --shadow-soft: 0 0 0 1px rgb(34 211 238 / 0.06), 0 8px 28px rgb(0 0 0 / 0.6);
+  --shadow-lift: 0 0 0 1px rgb(34 211 238 / 0.1), 0 16px 48px rgb(0 0 0 / 0.7);
+  --glow-strength: 0.6;
 
-  /* the ambient wash behind everything */
-  --ambient: radial-gradient(
-    120% 80% at 50% -10%,
-    color-mix(in oklab, var(--accent) 10%, transparent) 0%,
-    transparent 60%
-  );
+  /* the technical grid the whole thing sits on */
+  --grid-line: rgb(34 211 238 / 0.045);
+  --grid-size: 44px;
 }
 
-@media (prefers-color-scheme: dark) {
+/*
+ * Light mode keeps the same structure but lifts the ground, for anyone using
+ * this in daylight. The HUD reads as blueprint rather than glass.
+ */
+@media (prefers-color-scheme: light) {
   :root {
-    --bg: #080b11;
-    --bg-tint: #0d131c;
-    --surface: #111823;
-    --surface-2: #18202d;
-    --border: #1f2937;
-    --border-strong: #2c3949;
+    --bg: #eef4f8;
+    --bg-tint: #e2ecf3;
+    --surface: #ffffff;
+    --surface-2: #e8f1f7;
+    --border: #b9d4e3;
+    --border-strong: #7fb0c9;
 
-    --text: #e9eef6;
-    --text-muted: #97a5b8;
-    --text-faint: #63718a;
+    --text: #06202e;
+    --text-muted: #3d6076;
+    --text-faint: #6b8ea3;
 
-    --accent: #2dd4bf;
-    --accent-2: #38bdf8;
-    --accent-soft: #0d2f2c;
-    --accent-contrast: #04211f;
+    --accent: #0891b2;
+    --accent-2: #0284c7;
+    --accent-soft: #d8f1f8;
+    --accent-contrast: #ffffff;
 
-    --state-idle: #64748b;
-    --state-listening: #22d3ee;
-    --state-thinking: #a78bfa;
-    --state-speaking: #2dd4bf;
+    --state-idle: #7d9aab;
+    --state-listening: #0891b2;
+    --state-thinking: #7c3aed;
+    --state-speaking: #0d9488;
 
-    --danger: #f87171;
-    --warning: #fbbf24;
-    --success: #4ade80;
+    --danger: #dc2626;
+    --warning: #b45309;
+    --success: #059669;
 
-    /* Shadows do almost nothing on a dark ground; glow carries depth instead. */
-    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
-    --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.5), 0 16px 48px rgb(0 0 0 / 0.45);
-    --glow-strength: 0.55;
+    --shadow-soft: 0 1px 2px rgb(6 32 46 / 0.05), 0 4px 16px rgb(6 32 46 / 0.07);
+    --shadow-lift: 0 2px 6px rgb(6 32 46 / 0.08), 0 14px 36px rgb(6 32 46 / 0.12);
+    --glow-strength: 0.28;
+
+    --grid-line: rgb(8 145 178 / 0.07);
   }
 }
 
@@ -106,6 +109,7 @@
   --color-accent-2: var(--accent-2);
   --color-accent-soft: var(--accent-soft);
   --color-accent-contrast: var(--accent-contrast);
+  --color-amber: var(--amber);
 
   --color-idle: var(--state-idle);
   --color-listening: var(--state-listening);
@@ -127,54 +131,132 @@ html {
   background: var(--bg);
 }
 
+/*
+ * The ground: a faint engineering grid, plus a cyan bloom from above so the
+ * screen has a light source rather than being uniformly flat.
+ */
 body {
-  background: var(--ambient), var(--bg);
+  background:
+    radial-gradient(
+      100% 60% at 50% -5%,
+      color-mix(in oklab, var(--accent) 12%, transparent) 0%,
+      transparent 65%
+    ),
+    linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0 /
+      var(--grid-size) var(--grid-size),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0 /
+      var(--grid-size) var(--grid-size),
+    var(--bg);
   background-attachment: fixed;
   color: var(--text);
 }
 
-/* A hairline that fades out at both ends, for section rules that should not
-   look like table borders. */
+/* ---------------------------------------------------------------------------
+   HUD primitives
+--------------------------------------------------------------------------- */
+
+/*
+ * Bracket corners. Four short rules pinned to the corners of a panel, which is
+ * what makes a plain box read as an instrument rather than a card.
+ */
+.hud-frame {
+  position: relative;
+}
+.hud-frame::before,
+.hud-frame::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: var(--border-strong);
+  pointer-events: none;
+}
+.hud-frame::before {
+  top: -1px;
+  left: -1px;
+  border-top: 1px solid;
+  border-left: 1px solid;
+}
+.hud-frame::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 1px solid;
+  border-right: 1px solid;
+}
+
+/* The accent variant, for whatever is currently the live panel. */
+.hud-frame-live::before,
+.hud-frame-live::after {
+  border-color: var(--accent);
+}
+
+/* A label rule that trails off, so headings read as instrument captions. */
 .rule-fade {
   background: linear-gradient(
     to right,
-    transparent,
     var(--border-strong),
     transparent
   );
 }
 
-/* Frosted bars that sit over scrolling content. */
+/* Frosted bars over scrolling content. */
 .glass {
-  background: color-mix(in oklab, var(--bg) 72%, transparent);
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  background: color-mix(in oklab, var(--bg) 76%, transparent);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
 }
 
-/* Used behind the orb: a soft coloured bloom driven by the state colour. */
+/* Small uppercase technical captions. */
+.hud-label {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* ---------------------------------------------------------------------------
+   Motion
+--------------------------------------------------------------------------- */
+
 @keyframes bloom {
   0%,
   100% {
-    opacity: 0.5;
+    opacity: 0.45;
     transform: scale(1);
   }
   50% {
-    opacity: 0.85;
-    transform: scale(1.08);
+    opacity: 0.8;
+    transform: scale(1.07);
   }
 }
 
-@keyframes drift {
-  0%,
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+/* A scanning sweep, used sparingly — one element at a time. */
+@keyframes sweep {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
   100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -6px, 0);
+    transform: translateY(400%);
+    opacity: 0;
   }
 }
 
-/* Text that arrives a line at a time should not pop. */
 @keyframes rise {
   from {
     opacity: 0;
@@ -189,14 +271,23 @@ body {
 .animate-bloom {
   animation: bloom 6s ease-in-out infinite;
 }
-.animate-drift {
-  animation: drift 7s ease-in-out infinite;
+.animate-spin-slow {
+  animation: spin-slow 24s linear infinite;
+}
+.animate-spin-slower {
+  animation: spin-slow 48s linear infinite;
+}
+.animate-spin-reverse {
+  animation: spin-reverse 32s linear infinite;
+}
+.animate-sweep {
+  animation: sweep 5s ease-in-out infinite;
 }
 .animate-rise {
   animation: rise 0.28s ease-out both;
 }
 
-/* Respect users who ask for less motion — the voice orb animates a lot. */
+/* Respect users who ask for less motion — the HUD animates a great deal. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
