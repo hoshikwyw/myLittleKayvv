@@ -79,6 +79,7 @@ export function HudPanel({
         )}
 
         <div className="flex shrink-0 items-center">
+          {!maximised && (
           <button
             type="button"
             onClick={() => onStateChange(minimised ? "open" : "minimised")}
@@ -93,21 +94,30 @@ export function HudPanel({
               <Minus className="size-3" />
             )}
           </button>
+          )}
 
-          <button
-            type="button"
-            onClick={() => onStateChange(maximised ? "open" : "maximised")}
-            aria-label={
-              maximised ? `Restore ${title}` : `Fill screen with ${title}`
-            }
-            className="text-text-faint hover:text-accent grid size-5 place-items-center transition-colors"
-          >
-            {maximised ? (
+          {maximised ? (
+            <button
+              type="button"
+              onClick={() => onStateChange("open")}
+              aria-label={`Leave full screen`}
+              className="text-accent border-accent/50 hover:bg-accent-soft mr-1 flex items-center gap-1 rounded-sm border px-1.5 py-0.5 transition-colors"
+            >
               <Minimize2 className="size-3" />
-            ) : (
+              <span className="hud-label !text-[9px] !tracking-[0.12em] text-current">
+                exit · esc
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onStateChange("maximised")}
+              aria-label={`Fill screen with ${title}`}
+              className="text-text-faint hover:text-accent grid size-5 place-items-center transition-colors"
+            >
               <Maximize2 className="size-3" />
-            )}
-          </button>
+            </button>
+          )}
 
           <button
             type="button"

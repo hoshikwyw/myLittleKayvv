@@ -58,6 +58,18 @@ const CORE_MOTION: Record<
   error: { scale: [1], duration: 0 },
 };
 
+/**
+ * Rounded to three decimals so both sides of hydration agree.
+ *
+ * Node and the browser can serialise the same float differently in its last
+ * digit — 32.37382088155714 against ...12 — and React compares the rendered
+ * strings, so raw trigonometry here produces a hydration mismatch on a handful
+ * of ticks. Three decimals is far finer than a 200-unit viewBox can show.
+ */
+function at(centre: number, radius: number, angle: number): number {
+  return Number((centre + radius * angle).toFixed(3));
+}
+
 /** Tick marks around the rim, as an instrument bezel. */
 function Ticks({ colour }: { colour: string }) {
   return (
@@ -65,16 +77,18 @@ function Ticks({ colour }: { colour: string }) {
       {Array.from({ length: 60 }, (_, i) => {
         const major = i % 5 === 0;
         const angle = (i / 60) * Math.PI * 2 - Math.PI / 2;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
         const outer = 96;
         const inner = major ? 86 : 91;
 
         return (
           <line
             key={i}
-            x1={100 + Math.cos(angle) * inner}
-            y1={100 + Math.sin(angle) * inner}
-            x2={100 + Math.cos(angle) * outer}
-            y2={100 + Math.sin(angle) * outer}
+            x1={at(100, inner, cos)}
+            y1={at(100, inner, sin)}
+            x2={at(100, outer, cos)}
+            y2={at(100, outer, sin)}
             stroke={colour}
             strokeWidth={major ? 1.6 : 0.7}
             opacity={major ? 0.9 : 0.4}

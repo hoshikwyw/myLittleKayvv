@@ -130,6 +130,17 @@ export function HudWorkspace({
 
   const maximised = PANELS.find((p) => panels[p.id] === "maximised");
 
+  useEffect(() => {
+    if (!maximised) return;
+
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setPanel(maximised!.id, "open");
+    }
+
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [maximised, setPanel]);
+
   function body(id: PanelId) {
     switch (id) {
       case "chat":
@@ -205,7 +216,9 @@ export function HudWorkspace({
   }
 
   const column = (side: "left" | "right") =>
-    PANELS.filter((p) => p.column === side && panels[p.id]).map(renderPanel);
+    PANELS.filter(
+      (p) => p.column === side && panels[p.id] && panels[p.id] !== "maximised",
+    ).map(renderPanel);
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -240,10 +253,19 @@ export function HudWorkspace({
       </div>
 
       {maximised && (
-        <div
-          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm"
-          aria-hidden="true"
-        />
+        <>
+          {/*
+            Clicking away is how a full-screen thing is usually dismissed, so
+            the backdrop is a real button rather than a decorative div.
+          */}
+          <button
+            type="button"
+            onClick={() => setPanel(maximised.id, "open")}
+            aria-label={`Leave full screen`}
+            className="fixed inset-0 z-30 cursor-default bg-black/70 backdrop-blur-sm"
+          />
+          {renderPanel(maximised)}
+        </>
       )}
 
       {/* The dock. Everything the header used to hold lives here. */}
