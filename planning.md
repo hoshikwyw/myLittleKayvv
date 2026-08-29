@@ -675,7 +675,50 @@ shape was fragile and swallowed our own, more specific wording; the loop simply
 says who wrote it. `origin` defaults to `"provider"`, so a caller that forgets
 cannot thereby have a payload forwarded verbatim.
 
-## 22. Open questions
+## 22. Reminders that carry what you know
+
+"Nan's birthday is in seven days" is half the job. The half that matters is
+"...and she has been wanting a film camera, and she cannot eat peanuts."
+Remembering the date is bookkeeping; remembering what to do about it is the
+reason to keep a memory assistant at all.
+
+Each due date now carries the person's notes and up to three stored facts,
+indented beneath it so the reminder still reads as one thing.
+
+**Confirmed facts come first.** Those were stated outright rather than inferred,
+so they are the ones worth putting in front of someone as if true.
+
+**No model is involved.** Principle 1 in AGENTS.md: this reads stored rows
+directly. A reminder that depends on an LLM being available is a reminder that
+will one day not arrive. Context is also a bonus — if the extra lookup fails,
+the reminder still goes out plainer rather than not at all.
+
+**Looked up after selection**, so it costs nothing on the days nothing is due.
+
+### Two bugs this found
+
+**`= ANY($1)` with a JavaScript array does not work.** Binding an array as one
+parameter flattens it and throws. The pattern appeared in four places, and two
+of them were the queries that mark reminders as sent. The failure mode was the
+worst available: the message goes out, the mark fails, and the same reminder
+arrives again tomorrow and the day after — exactly what the idempotency guard
+exists to prevent. It survived because marking only runs after a successful
+delivery, which needs a configured channel, so a dry run never reaches it. All
+four now use `inArray`, and `markNotified` is separated and tested directly.
+
+**Concurrent upserts lost each other's fields.** The unique index stopped
+duplicate rows, but the update path still read a row and wrote every column
+back. Several concurrent calls each held a snapshot from before the others
+committed, so one that knew nothing about the relationship wrote back the null
+it had read and erased what a sibling had just set. A stress run lost a field in
+ten rounds out of fifteen. Now only the fields a call actually learned are
+written, and anything that has to combine with the stored value — aliases,
+notes — is combined in SQL at write time. Fifteen rounds, nothing lost.
+
+Related: a JavaScript array bound as a single parameter is not a Postgres array
+literal there either. Each alias is bound separately.
+
+## 23. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

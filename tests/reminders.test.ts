@@ -18,6 +18,7 @@ const base: Omit<DateCandidate, "month" | "day"> = {
   id: "x",
   label: "Birthday",
   kind: "birthday",
+  personId: null,
   year: null,
   recurring: true,
   remindDaysBefore: [7, 1, 0],

@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { EMBEDDING_DIMENSIONS, memories, people, type Memory } from "@/db/schema";
 import { getProvider } from "@/lib/llm";
@@ -160,7 +160,7 @@ async function markRecalled(ids: string[]): Promise<void> {
         recallCount: sql`${memories.recallCount} + 1`,
         lastRecalledAt: new Date(),
       })
-      .where(sql`${memories.id} = ANY(${ids})`);
+      .where(inArray(memories.id, ids));
   } catch {
     // Statistics are not worth failing a recall over.
   }

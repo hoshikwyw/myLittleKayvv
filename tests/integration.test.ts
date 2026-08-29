@@ -18,7 +18,8 @@ import {
   latestConversation,
   titleFromFirstMessage,
 } from "@/lib/memory/conversations";
-import { runReminderSweep } from "@/lib/reminders/sweep";
+import { markNotified, runReminderSweep } from "@/lib/reminders/sweep";
+import { contextForPeople, contextLines } from "@/lib/reminders/context";
 import {
   updateImportantDate,
   updateMemoryContent,
@@ -344,6 +345,45 @@ describe("memory against real Postgres", () => {
     assert.equal(everyone[0].relationship, "sister");
   });
 
+  dbTest("concurrent upserts cannot lose each other's fields", async () => {
+    // The subtler half of the same race. Reading a row and writing every
+    // column back is a lost update: a call that knew nothing about the
+    // relationship writes back the null it read and erases what a sibling
+    // call just set. Ten runs in fifteen lost a field before the fix.
+    for (let round = 0; round < 5; round++) {
+      await reset(db);
+
+      await Promise.all(
+        Array.from({ length: 8 }, (_, i) =>
+          upsertPerson({
+            name: "Nandar",
+            relationship: i === 0 ? "sister" : undefined,
+            pronouns: i === 3 ? "she/her" : undefined,
+            aliases: i === 5 ? ["my sister"] : undefined,
+          }),
+        ),
+      );
+
+      const [person] = await listPeople();
+      assert.equal(person.relationship, "sister", `round ${round}`);
+      assert.equal(person.pronouns, "she/her", `round ${round}`);
+      assert.ok(person.aliases.includes("my sister"), `round ${round}`);
+    }
+  });
+
+  dbTest("notes accumulate rather than overwrite", async () => {
+    await reset(db);
+
+    await upsertPerson({ name: "Nandar", notes: "Lives in Mandalay." });
+    const { person } = await upsertPerson({
+      name: "Nandar",
+      notes: "Visits at Thingyan.",
+    });
+
+    assert.match(person.notes ?? "", /Lives in Mandalay\./);
+    assert.match(person.notes ?? "", /Visits at Thingyan\./);
+  });
+
   dbTest("names collide case-insensitively", async () => {
     await reset(db);
 
@@ -495,6 +535,79 @@ describe("memory against real Postgres", () => {
     await reset(db);
     const memory = await storeMemory({ content: "Something worth keeping." });
     await assert.rejects(() => updateMemoryContent(memory.id, "   "));
+  });
+
+  dbTest("a reminder carries what is known about the person", async () => {
+    await reset(db);
+
+    const { person } = await upsertPerson({
+      name: "Nandar",
+      nickname: "Nan",
+      notes: "Lives in Mandalay.",
+    });
+    await storeMemory({
+      content: "Nandar has been wanting a film camera.",
+      personId: person.id,
+      confirmed: true,
+    });
+    await storeMemory({
+      content: "Nandar might prefer tea.",
+      personId: person.id,
+      confirmed: false,
+    });
+
+    const context = await contextForPeople([person.id]);
+    const lines = contextLines(context.get(person.id));
+
+    // Notes first, then facts: stated ones ahead of inferred ones, because
+    // those are the ones worth putting in front of someone as if true.
+    assert.equal(lines[0], "Lives in Mandalay.");
+    assert.equal(lines[1], "Nandar has been wanting a film camera.");
+    assert.ok(lines.includes("Nandar might prefer tea."));
+  });
+
+  dbTest("someone with nothing stored adds no noise", async () => {
+    await reset(db);
+    const { person } = await upsertPerson({ name: "Nobody" });
+
+    const context = await contextForPeople([person.id]);
+    assert.deepEqual(contextLines(context.get(person.id)), []);
+    // An unknown id must not throw.
+    assert.deepEqual(
+      contextLines((await contextForPeople(["00000000-0000-4000-8000-000000000000"])).get("x")),
+      [],
+    );
+  });
+
+  dbTest("marking reminders as sent actually writes, so they do not repeat", async () => {
+    await reset(db);
+    const now = new Date("2026-08-28T06:00:00Z");
+
+    const { person } = await upsertPerson({ name: "Nandar" });
+    const date = await addImportantDate({
+      personId: person.id,
+      label: "Birthday",
+      kind: "birthday",
+      month: 8,
+      day: 28,
+      year: 1998,
+    });
+    const plan = await addPlan({ title: "Dentist", date: "2026-08-28" });
+
+    // This runs only after a successful delivery, which a dry run never
+    // reaches — long enough for a broken array binding to hide here.
+    await markNotified([date.id], [plan.id], "2026-08-28", now);
+
+    const [storedDate] = await db
+      .select()
+      .from(schemaImportantDates)
+      .where(eqFn(schemaImportantDates.id, date.id));
+    assert.equal(storedDate.lastNotifiedOn, "2026-08-28");
+
+    // And the sweep now stays silent, which is the whole point.
+    const again = await runReminderSweep(now, { dryRun: true });
+    assert.equal(again.due.filter((d) => d.kind === "date").length, 0);
+    assert.equal(again.skipped, 1);
   });
 
   dbTest("everyone is listed, most important first", async () => {

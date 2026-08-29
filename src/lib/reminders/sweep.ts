@@ -1,4 +1,4 @@
-import { and, eq, or, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { important_dates, people, plans } from "@/db/schema";
 import { env } from "@/lib/env";
@@ -14,6 +14,7 @@ import {
   zonedTimeToUtc,
 } from "@/lib/memory/calendar";
 import { notify } from "@/lib/notify";
+import { contextForPeople, contextLines } from "./context";
 
 /**
  * The daily reminder sweep.
@@ -36,6 +37,10 @@ export interface DueReminder {
   id: string;
   line: string;
   daysAway: number;
+  /** Whose date, so context can be looked up after selection. */
+  personId?: string | null;
+  /** What we know about them, shown under the reminder. */
+  context?: string[];
 }
 
 export interface SweepResult {
@@ -56,6 +61,8 @@ export interface SweepResult {
 export interface DateCandidate {
   id: string;
   label: string;
+  /** Whose date this is, so what we know about them can be attached. */
+  personId: string | null;
   /** Drives the phrasing: a person turns 28, a marriage does not. */
   kind: string;
   month: number;
@@ -110,6 +117,7 @@ export function selectDueDates(
     due.push({
       kind: "date",
       id: date.id,
+      personId: date.personId,
       daysAway,
       line: describeDate(
         date.label,
@@ -203,6 +211,7 @@ export async function runReminderSweep(
     dateRows.map(({ date, personName, personNickname }) => ({
       id: date.id,
       label: date.label,
+      personId: date.personId,
       kind: date.kind,
       month: date.month,
       day: date.day,
@@ -264,6 +273,22 @@ export async function runReminderSweep(
     firedPlanIds.push(plan.id);
   }
 
+  // What we know about the people whose dates are due. Looked up after
+  // selection so it costs nothing on the days nothing is due.
+  try {
+    const context = await contextForPeople(
+      due.map((d) => d.personId).filter((id): id is string => Boolean(id)),
+    );
+    for (const reminder of due) {
+      if (!reminder.personId) continue;
+      const lines = contextLines(context.get(reminder.personId));
+      if (lines.length > 0) reminder.context = lines;
+    }
+  } catch {
+    // Context is a bonus. A reminder that fails because the extra lookup
+    // failed would be a worse outcome than a plainer reminder.
+  }
+
   const result: SweepResult = {
     today: todayIso,
     timezone,
@@ -278,7 +303,15 @@ export async function runReminderSweep(
 
   const subject =
     due.length === 1 ? "A reminder" : `${due.length} things coming up`;
-  const body = due.map((d) => `• ${d.line}`).join("\n");
+  const body = due
+    .map((d) => {
+      const lines = [`• ${d.line}`];
+      // Indented beneath the date, so a reminder still reads as one thing
+      // rather than a list of unrelated facts.
+      for (const extra of d.context ?? []) lines.push(`   ${extra}`);
+      return lines.join("\n");
+    })
+    .join("\n\n");
 
   const outcome = await notify({ subject, body });
 
@@ -291,19 +324,42 @@ export async function runReminderSweep(
   // Only mark as notified once something actually went out. Marking on failure
   // would lose the reminder entirely, which is the one outcome worth avoiding.
   if (outcome.delivered) {
-    if (firedDateIds.length > 0) {
-      await db
-        .update(important_dates)
-        .set({ lastNotifiedOn: todayIso })
-        .where(sql`${important_dates.id} = ANY(${firedDateIds})`);
-    }
-    if (firedPlanIds.length > 0) {
-      await db
-        .update(plans)
-        .set({ notifiedAt: now })
-        .where(sql`${plans.id} = ANY(${firedPlanIds})`);
-    }
+    await markNotified(firedDateIds, firedPlanIds, todayIso, now);
   }
 
   return result;
+}
+
+/**
+ * Records that these reminders have gone out.
+ *
+ * Separated and exported because it is what makes the sweep idempotent, and it
+ * only runs after a successful delivery — which needs a configured channel, so
+ * a dry run never reaches it. That left it untested long enough for a broken
+ * query to hide here: binding a JavaScript array into `= ANY($1)` flattens it
+ * to a single value and throws. The failure mode was the worst available —
+ * the message sends, the mark fails, and the same reminder arrives again
+ * tomorrow, and the day after.
+ */
+export async function markNotified(
+  dateIds: string[],
+  planIds: string[],
+  todayIso: string,
+  now: Date,
+): Promise<void> {
+  const db = getDb();
+
+  if (dateIds.length > 0) {
+    await db
+      .update(important_dates)
+      .set({ lastNotifiedOn: todayIso })
+      .where(inArray(important_dates.id, dateIds));
+  }
+
+  if (planIds.length > 0) {
+    await db
+      .update(plans)
+      .set({ notifiedAt: now })
+      .where(inArray(plans.id, planIds));
+  }
 }

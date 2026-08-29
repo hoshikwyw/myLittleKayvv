@@ -103,25 +103,54 @@ export async function upsertPerson(input: PersonInput): Promise<UpsertResult> {
     throw new Error(`Could not store or find "${input.name}".`);
   }
 
-  const mergedAliases = [
-    ...new Set([...(current.aliases ?? []), ...(input.aliases ?? [])]),
-  ];
+  /**
+   * Only the fields this call actually learned are written.
+   *
+   * Reading a row and writing every column back is a lost update: the agent
+   * runs tool calls concurrently, so several of them reach here for the same
+   * person at once, each holding a snapshot from before the others committed.
+   * A call that knew nothing about the relationship would write back the null
+   * it read and erase the one a sibling call had just set — observed losing a
+   * field in ten runs out of fifteen.
+   *
+   * Anything that has to combine with the stored value is combined in SQL, at
+   * write time, against whatever is actually in the row.
+   */
+  const changes: Record<string, unknown> = { updatedAt: new Date() };
+
+  if (input.nickname !== undefined) changes.nickname = input.nickname;
+  if (input.relationship !== undefined) changes.relationship = input.relationship;
+  if (input.pronouns !== undefined) changes.pronouns = input.pronouns;
+  if (input.importance !== undefined) changes.importance = input.importance;
+
+  if (input.aliases?.length) {
+    // Each alias is bound separately: handing Postgres a JavaScript array as a
+    // single parameter does not produce an array literal, it produces a cast
+    // error at runtime.
+    const incoming = sql.join(
+      input.aliases.map((alias) => sql`${alias}`),
+      sql`, `,
+    );
+
+    // Union against the current value, not the one we read a moment ago.
+    changes.aliases = sql`(
+      SELECT ARRAY(
+        SELECT DISTINCT unnest(${people.aliases} || ARRAY[${incoming}]::text[])
+      )
+    )`;
+  }
+
+  if (input.notes) {
+    changes.notes = sql`CASE
+      WHEN ${people.notes} IS NULL OR ${people.notes} = ''
+        THEN ${input.notes}
+      ELSE ${people.notes} || E'\n' || ${input.notes}
+    END`;
+  }
 
   const [person] = await db
     .update(people)
-    .set({
-      nickname: input.nickname ?? current.nickname,
-      aliases: mergedAliases,
-      relationship: input.relationship ?? current.relationship,
-      pronouns: input.pronouns ?? current.pronouns,
-      notes: input.notes
-        ? current.notes
-          ? `${current.notes}\n${input.notes}`
-          : input.notes
-        : current.notes,
-      importance: input.importance ?? current.importance,
-      updatedAt: new Date(),
-    })
+    .set(changes)
     .where(eq(people.id, current.id))
     .returning();
 
