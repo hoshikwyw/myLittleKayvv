@@ -66,12 +66,21 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
   // Mirrors conversationId so `send` and `clear` can read it without listing it
   // as a dependency and being rebuilt on every turn.
   const conversationIdRef = useRef<string | null>(null);
+  /**
+   * Mirrors `messages` so `send` can read the current thread without listing
+   * it as a dependency and being rebuilt on every token.
+   */
+  const messagesRef = useRef<Message[]>([]);
   // Held in a ref so `send` does not need them as dependencies, which would
   // rebuild it on every render and defeat the memoisation.
   const callbacksRef = useRef(callbacks);
   useEffect(() => {
     callbacksRef.current = callbacks;
   });
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const busy = state === "thinking" || state === "speaking";
 
@@ -186,20 +195,29 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
       };
       const assistantId = newId();
 
-      // Snapshot the history we send so it cannot race the state update.
-      let history: Message[] = [];
-      setMessages((prev) => {
-        history = [...prev, userMessage];
-        return [
-          ...history,
-          {
-            id: assistantId,
-            role: "assistant",
-            content: "",
-            createdAt: new Date().toISOString(),
-          },
-        ];
-      });
+      /**
+       * The history is built from a ref, not inside a state updater.
+       *
+       * Assigning to an outer variable from within an updater is a side effect
+       * in a function React is free to call more than once — and in StrictMode
+       * it does. The second call saw the placeholder this one had just added
+       * and sent it as a message with empty content, which the server rejects.
+       */
+      const history = [...messagesRef.current, userMessage];
+      const next = [
+        ...history,
+        {
+          id: assistantId,
+          role: "assistant" as const,
+          content: "",
+          createdAt: new Date().toISOString(),
+        },
+      ];
+
+      // Kept in step immediately, so a second send cannot read a stale thread
+      // before the effect above catches up.
+      messagesRef.current = next;
+      setMessages(next);
 
       setTools([]);
       setWrites([]);

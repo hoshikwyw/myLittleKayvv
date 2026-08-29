@@ -37,6 +37,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      /**
+       * Browser extensions write their own attributes onto <html> before
+       * React hydrates, which React then reports as a server/client mismatch.
+       * Nothing here is wrong and there is nothing to fix in our markup, so
+       * the warning is suppressed on this element only — never deeper, where
+       * a real mismatch would be worth hearing about.
+       */
+      suppressHydrationWarning
     >
       <body className="bg-bg text-text flex min-h-full flex-col font-sans">
         {children}
