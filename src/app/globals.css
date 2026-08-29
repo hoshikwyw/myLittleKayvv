@@ -159,9 +159,15 @@ body {
  * Bracket corners. Four short rules pinned to the corners of a panel, which is
  * what makes a plain box read as an instrument rather than a card.
  */
-.hud-frame {
-  position: relative;
-}
+/*
+ * Deliberately does NOT set `position`.
+ *
+ * This file is imported after Tailwind, so a `position` here would win against
+ * a `.fixed` or `.absolute` utility at equal specificity and silently override
+ * it. That is exactly what happened: a maximised panel carrying both
+ * `hud-frame` and `fixed` stayed in normal flow and sat at the bottom of the
+ * page. Callers add `relative` themselves.
+ */
 .hud-frame::before,
 .hud-frame::after {
   content: "";

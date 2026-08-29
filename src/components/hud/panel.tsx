@@ -52,10 +52,12 @@ export function HudPanel({
         "transition-colors duration-200",
         live ? "hud-frame-live border-accent/50" : "border-border",
         // Full window, edge to edge. The panel is glass, so what it covers
-        // stays visible and blurred behind it.
+        // stays visible and blurred behind it. `relative` is only applied when
+        // it is not fixed — hud-frame no longer sets position for exactly this
+        // reason.
         maximised
           ? "fixed inset-0 z-50 rounded-none border-x-0 border-b-0"
-          : "max-h-full",
+          : "relative max-h-full",
         className,
       )}
       style={live ? { boxShadow: "0 0 40px -20px var(--accent)" } : undefined}

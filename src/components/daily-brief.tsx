@@ -31,7 +31,7 @@ export function DailyBriefPanel({ brief }: { brief: DailyBrief }) {
             <li
               key={item.id}
               className={cn(
-                "hud-frame animate-rise flex items-center gap-2.5 rounded-sm border px-3.5 py-2.5 text-sm",
+                "hud-frame relative animate-rise flex items-center gap-2.5 rounded-sm border px-3.5 py-2.5 text-sm",
                 "transition-colors duration-200",
                 item.imminent
                   ? "hud-frame-live border-accent/40 bg-accent-soft shadow-[0_0_28px_-14px_var(--accent)]"

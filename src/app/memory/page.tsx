@@ -108,7 +108,7 @@ export default async function MemoryPage() {
                   <li
                     key={date.id}
                     className={cn(
-                      "hud-frame border-border bg-surface/70 flex items-center gap-3 rounded-sm border px-4 py-3",
+                      "hud-frame relative border-border bg-surface/70 flex items-center gap-3 rounded-sm border px-4 py-3",
                       // Today and tomorrow are the ones that actually matter.
                       date.daysAway <= 1 &&
                         "hud-frame-live border-accent/40 bg-accent-soft shadow-[0_0_28px_-14px_var(--accent)]",
@@ -140,7 +140,7 @@ export default async function MemoryPage() {
                 {overview.people.map((person) => (
                   <li
                     key={person.id}
-                    className="hud-frame border-border bg-surface/70 shadow-soft hover:border-border-strong flex flex-col gap-3 rounded-sm border px-4 py-3.5 transition-colors duration-200"
+                    className="hud-frame relative border-border bg-surface/70 shadow-soft hover:border-border-strong flex flex-col gap-3 rounded-sm border px-4 py-3.5 transition-colors duration-200"
                   >
                     <div className="flex items-start gap-2">
                       <InlineEdit
@@ -327,7 +327,7 @@ export default async function MemoryPage() {
                 {overview.plans.map((plan) => (
                   <li
                     key={plan.id}
-                    className="hud-frame border-border bg-surface/70 flex items-center gap-3 rounded-sm border px-4 py-3"
+                    className="hud-frame relative border-border bg-surface/70 flex items-center gap-3 rounded-sm border px-4 py-3"
                   >
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate text-sm">{plan.title}</span>
@@ -350,7 +350,7 @@ export default async function MemoryPage() {
                 {overview.looseFacts.map((fact) => (
                   <li
                     key={fact.id}
-                    className="hud-frame border-border bg-surface/70 flex items-start gap-3 rounded-sm border px-4 py-3"
+                    className="hud-frame relative border-border bg-surface/70 flex items-start gap-3 rounded-sm border px-4 py-3"
                   >
                     <span className="min-w-0 flex-1 text-sm leading-relaxed">
                       {fact.content}

@@ -298,7 +298,7 @@ export function HudWorkspace({
                 aria-label={panel.title}
                 title={panel.title}
                 className={cn(
-                  "hud-frame flex flex-1 flex-col items-center gap-1 rounded-sm border px-2 py-1.5 transition-colors",
+                  "hud-frame relative flex flex-1 flex-col items-center gap-1 rounded-sm border px-2 py-1.5 transition-colors",
                   open
                     ? "border-accent/50 text-accent bg-accent-soft/40"
                     : "border-border text-text-faint hover:text-text-muted",

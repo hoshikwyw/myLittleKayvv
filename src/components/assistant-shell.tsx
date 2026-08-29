@@ -266,7 +266,7 @@ export function AssistantShell({
                     "rounded-sm border",
                     message.role === "user"
                       ? "border-accent/50 text-text"
-                      : "hud-frame border-border bg-surface shadow-soft",
+                      : "hud-frame relative border-border bg-surface shadow-soft",
                   )}
                   style={
                     message.role === "user"
