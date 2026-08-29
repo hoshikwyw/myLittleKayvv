@@ -1,24 +1,46 @@
-import { AssistantShell } from "@/components/assistant-shell";
+import { HudWorkspace } from "@/components/hud/workspace";
 import { configured, env } from "@/lib/env";
-import { loadDailyBrief, type DailyBrief } from "@/lib/memory/brief";
+import { loadMemoryOverview, type MemoryOverview } from "@/lib/memory/overview";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
-  // The brief is a nicety, not the product. If the database is unreachable the
-  // assistant must still open, so a failure here is swallowed rather than
-  // turned into an error page.
-  let brief: DailyBrief | null = null;
+/** Nothing stored yet, or no database — the workspace still has to render. */
+const EMPTY: MemoryOverview = {
+  people: [],
+  upcoming: [],
+  plans: [],
+  looseFacts: [],
+  counts: { people: 0, dates: 0, facts: 0, plans: 0 },
+};
 
-  if (configured.database()) {
-    brief = await loadDailyBrief().catch(() => null);
-  }
+export default async function Home() {
+  const overview = configured.database()
+    ? await loadMemoryOverview().catch(() => EMPTY)
+    : EMPTY;
+
+  const now = new Date();
+  const today = new Intl.DateTimeFormat("en-GB", {
+    timeZone: env.timezone,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(now);
 
   return (
-    <AssistantShell
+    <HudWorkspace
       assistantName={env.assistantName}
-      memoryReady={configured.database()}
-      brief={brief}
+      overview={overview}
+      status={{
+        llm: configured.llm(),
+        database: configured.database(),
+        maps: configured.maps(),
+        search: configured.search(),
+        calendar: configured.calendar(),
+        telegram: configured.telegram(),
+      }}
+      model={env.geminiModel}
+      timezone={env.timezone}
+      today={today}
     />
   );
 }
