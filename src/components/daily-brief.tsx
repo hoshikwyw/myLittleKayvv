@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 export function DailyBriefPanel({ brief }: { brief: DailyBrief }) {
   return (
     <div className="flex w-full max-w-sm flex-col gap-2.5">
-      <p className="text-text-faint text-center text-xs tracking-wide">
+      <p className="text-text-faint text-center text-[11px] font-medium tracking-[0.2em] uppercase">
         {brief.today}
       </p>
 
@@ -29,10 +29,11 @@ export function DailyBriefPanel({ brief }: { brief: DailyBrief }) {
             <li
               key={item.id}
               className={cn(
-                "flex items-center gap-2.5 rounded-lg border px-3 py-2 text-sm",
+                "animate-rise flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm",
+                "transition-colors duration-200",
                 item.imminent
-                  ? "border-accent/40 bg-accent-soft"
-                  : "border-border bg-surface",
+                  ? "border-accent/40 bg-accent-soft shadow-[0_0_24px_-12px_var(--accent)]"
+                  : "border-border bg-surface shadow-soft hover:border-border-strong",
               )}
             >
               {item.kind === "date" ? (

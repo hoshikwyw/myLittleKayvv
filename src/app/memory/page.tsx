@@ -41,11 +41,12 @@ function Section({
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-text-muted flex items-center gap-2 text-xs font-medium tracking-widest uppercase">
-        <Icon className="size-3.5" aria-hidden="true" />
+        <Icon className="text-accent size-3.5" aria-hidden="true" />
         {title}
         {count !== undefined && count > 0 && (
           <span className="text-text-faint font-mono normal-case">{count}</span>
         )}
+        <span className="rule-fade ml-1 h-px flex-1" aria-hidden="true" />
       </h2>
       {children}
     </section>
@@ -107,9 +108,10 @@ export default async function MemoryPage() {
                   <li
                     key={date.id}
                     className={cn(
-                      "border-border bg-surface flex items-center gap-3 rounded-lg border px-4 py-3",
+                      "border-border bg-surface shadow-soft flex items-center gap-3 rounded-xl border px-4 py-3",
                       // Today and tomorrow are the ones that actually matter.
-                      date.daysAway <= 1 && "border-accent/40 bg-accent-soft",
+                      date.daysAway <= 1 &&
+                        "border-accent/40 bg-accent-soft shadow-[0_0_28px_-14px_var(--accent)]",
                     )}
                   >
                     <span className="flex min-w-0 flex-1 flex-col">
@@ -138,7 +140,7 @@ export default async function MemoryPage() {
                 {overview.people.map((person) => (
                   <li
                     key={person.id}
-                    className="border-border bg-surface flex flex-col gap-3 rounded-xl border px-4 py-3.5"
+                    className="border-border bg-surface shadow-soft hover:border-border-strong flex flex-col gap-3 rounded-2xl border px-4 py-3.5 transition-colors duration-200"
                   >
                     <div className="flex items-start gap-2">
                       <InlineEdit
@@ -325,7 +327,7 @@ export default async function MemoryPage() {
                 {overview.plans.map((plan) => (
                   <li
                     key={plan.id}
-                    className="border-border bg-surface flex items-center gap-3 rounded-lg border px-4 py-3"
+                    className="border-border bg-surface shadow-soft flex items-center gap-3 rounded-xl border px-4 py-3"
                   >
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate text-sm">{plan.title}</span>
@@ -348,7 +350,7 @@ export default async function MemoryPage() {
                 {overview.looseFacts.map((fact) => (
                   <li
                     key={fact.id}
-                    className="border-border bg-surface flex items-start gap-3 rounded-lg border px-4 py-3"
+                    className="border-border bg-surface shadow-soft flex items-start gap-3 rounded-xl border px-4 py-3"
                   >
                     <span className="min-w-0 flex-1 text-sm leading-relaxed">
                       {fact.content}

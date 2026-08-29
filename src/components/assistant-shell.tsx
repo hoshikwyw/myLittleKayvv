@@ -120,7 +120,7 @@ export function AssistantShell({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="border-border flex items-center justify-between border-b px-5 py-3">
+      <header className="glass border-border sticky top-0 z-10 flex items-center justify-between border-b px-5 py-3">
         <div className="flex items-center gap-3">
           <AnimatePresence mode="popLayout">
             {started && (
@@ -249,11 +249,21 @@ export function AssistantShell({
               >
                 <div
                   className={cn(
-                    "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
+                    "animate-rise max-w-[85%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
+                    // Asymmetric corners: the flat one points at its speaker,
+                    // which is what makes a bubble read as coming from someone.
                     message.role === "user"
-                      ? "bg-accent text-accent-contrast"
-                      : "bg-surface border-border border",
+                      ? "text-accent-contrast rounded-2xl rounded-br-md shadow-soft"
+                      : "bg-surface border-border rounded-2xl rounded-bl-md border shadow-soft",
                   )}
+                  style={
+                    message.role === "user"
+                      ? {
+                          background:
+                            "linear-gradient(135deg, var(--accent) 0%, color-mix(in oklab, var(--accent) 70%, var(--accent-2)) 100%)",
+                        }
+                      : undefined
+                  }
                 >
                   {message.content || <span className="text-text-faint">…</span>}
                 </div>
@@ -304,7 +314,7 @@ export function AssistantShell({
         </div>
       </div>
 
-      <div className="border-border bg-bg border-t">
+      <div className="glass border-border border-t">
         <div className="mx-auto flex w-full max-w-2xl items-end gap-2 px-5 py-4">
           {voice.capabilities.listen && (
             <button
@@ -320,9 +330,10 @@ export function AssistantShell({
               aria-pressed={voice.listening}
               className={cn(
                 "grid size-11 shrink-0 place-items-center rounded-xl border transition-colors",
+                "transition-all duration-200 active:scale-95",
                 voice.listening
-                  ? "border-listening bg-listening/15 text-listening"
-                  : "border-border bg-surface text-text-muted hover:text-text",
+                  ? "border-listening bg-listening/15 text-listening shadow-[0_0_20px_-4px_var(--state-listening)]"
+                  : "border-border bg-surface text-text-muted hover:text-text hover:border-border-strong",
               )}
             >
               <Mic className="size-5" />
@@ -356,7 +367,11 @@ export function AssistantShell({
             onClick={() => (assistant.busy ? handleStop() : submit())}
             disabled={!assistant.busy && displayedInput.trim().length === 0}
             aria-label={assistant.busy ? "Stop" : "Send"}
-            className="bg-accent text-accent-contrast grid size-11 shrink-0 place-items-center rounded-xl transition-opacity disabled:opacity-30"
+            className="text-accent-contrast shadow-soft grid size-11 shrink-0 place-items-center rounded-xl transition-all duration-200 hover:brightness-110 active:scale-95 disabled:opacity-30 disabled:hover:brightness-100"
+            style={{
+              background:
+                "linear-gradient(135deg, var(--accent) 0%, color-mix(in oklab, var(--accent) 65%, var(--accent-2)) 100%)",
+            }}
           >
             {assistant.busy ? (
               <Square className="size-4" fill="currentColor" />

@@ -1,31 +1,39 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Design tokens — "calm assistant" direction.
-   Dark is the primary look; light is a supported second state, not a
+   Design tokens.
+
+   Dark is the primary look; light is a supported second state, not an
    afterthought. Every colour used anywhere in the app resolves to a token
-   here, so a future "JARVIS mode" skin is a token swap, not a refactor.
+   here, so re-skinning stays a token swap rather than a refactor.
+
+   Beyond flat colour there are three extra families — glow, gradient, and
+   elevation — because depth is what separates "a form on a page" from
+   something that feels built.
 --------------------------------------------------------------------------- */
 
 :root {
   /* surfaces */
-  --bg: #f6f7f9;
+  --bg: #f4f6f9;
+  --bg-tint: #e6ecf5;
   --surface: #ffffff;
-  --surface-2: #eef1f5;
-  --border: #dde2e9;
+  --surface-2: #eef1f6;
+  --border: #dfe4ec;
+  --border-strong: #c9d2e0;
 
   /* text */
-  --text: #0f172a;
-  --text-muted: #55637a;
-  --text-faint: #8a94a6;
+  --text: #0d1526;
+  --text-muted: #52607a;
+  --text-faint: #8b95a8;
 
   /* brand */
   --accent: #0d9488;
-  --accent-soft: #ccfbf1;
+  --accent-2: #0891b2;
+  --accent-soft: #d6f5ef;
   --accent-contrast: #ffffff;
 
   /* assistant states */
-  --state-idle: #8a94a6;
+  --state-idle: #94a3b8;
   --state-listening: #0891b2;
   --state-thinking: #7c3aed;
   --state-speaking: #0d9488;
@@ -34,21 +42,36 @@
   --danger: #dc2626;
   --warning: #d97706;
   --success: #16a34a;
+
+  /* depth */
+  --shadow-soft: 0 1px 2px rgb(13 21 38 / 0.04), 0 4px 16px rgb(13 21 38 / 0.06);
+  --shadow-lift: 0 2px 4px rgb(13 21 38 / 0.06), 0 12px 32px rgb(13 21 38 / 0.1);
+  --glow-strength: 0.35;
+
+  /* the ambient wash behind everything */
+  --ambient: radial-gradient(
+    120% 80% at 50% -10%,
+    color-mix(in oklab, var(--accent) 10%, transparent) 0%,
+    transparent 60%
+  );
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0b0f14;
-    --surface: #121821;
-    --surface-2: #1a2230;
-    --border: #232f3f;
+    --bg: #080b11;
+    --bg-tint: #0d131c;
+    --surface: #111823;
+    --surface-2: #18202d;
+    --border: #1f2937;
+    --border-strong: #2c3949;
 
-    --text: #e8edf4;
-    --text-muted: #94a3b8;
-    --text-faint: #64748b;
+    --text: #e9eef6;
+    --text-muted: #97a5b8;
+    --text-faint: #63718a;
 
     --accent: #2dd4bf;
-    --accent-soft: #10312e;
+    --accent-2: #38bdf8;
+    --accent-soft: #0d2f2c;
     --accent-contrast: #04211f;
 
     --state-idle: #64748b;
@@ -59,20 +82,28 @@
     --danger: #f87171;
     --warning: #fbbf24;
     --success: #4ade80;
+
+    /* Shadows do almost nothing on a dark ground; glow carries depth instead. */
+    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+    --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.5), 0 16px 48px rgb(0 0 0 / 0.45);
+    --glow-strength: 0.55;
   }
 }
 
 @theme inline {
   --color-bg: var(--bg);
+  --color-bg-tint: var(--bg-tint);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
 
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-text-faint: var(--text-faint);
 
   --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
   --color-accent-soft: var(--accent-soft);
   --color-accent-contrast: var(--accent-contrast);
 
@@ -85,13 +116,84 @@
   --color-warning: var(--warning);
   --color-success: var(--success);
 
+  --shadow-soft: var(--shadow-soft);
+  --shadow-lift: var(--shadow-lift);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-body {
+html {
   background: var(--bg);
+}
+
+body {
+  background: var(--ambient), var(--bg);
+  background-attachment: fixed;
   color: var(--text);
+}
+
+/* A hairline that fades out at both ends, for section rules that should not
+   look like table borders. */
+.rule-fade {
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--border-strong),
+    transparent
+  );
+}
+
+/* Frosted bars that sit over scrolling content. */
+.glass {
+  background: color-mix(in oklab, var(--bg) 72%, transparent);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+}
+
+/* Used behind the orb: a soft coloured bloom driven by the state colour. */
+@keyframes bloom {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
+/* Text that arrives a line at a time should not pop. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-bloom {
+  animation: bloom 6s ease-in-out infinite;
+}
+.animate-drift {
+  animation: drift 7s ease-in-out infinite;
+}
+.animate-rise {
+  animation: rise 0.28s ease-out both;
 }
 
 /* Respect users who ask for less motion — the voice orb animates a lot. */

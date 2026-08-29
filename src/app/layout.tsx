@@ -17,10 +17,18 @@ export const metadata: Metadata = {
   description: "A personal assistant that listens, remembers, and reminds.",
 };
 
+/**
+ * The only literal colours in the app.
+ *
+ * The browser paints its chrome from this before any stylesheet loads, so it
+ * cannot read a CSS variable. These must be kept in step with `--bg` in
+ * globals.css by hand — when they drift, a phone shows a visible seam between
+ * the browser bar and the page.
+ */
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f7f9" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b0f14" },
+    { media: "(prefers-color-scheme: light)", color: "#f4f6f9" },
+    { media: "(prefers-color-scheme: dark)", color: "#080b11" },
   ],
 };
 
