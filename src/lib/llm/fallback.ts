@@ -15,6 +15,12 @@ import { LLMError, type GenerateOptions, type LLMProvider, type StreamEvent } fr
  * signature to carry. So a turn that switches vendors part-way must not switch
  * back on the next iteration of the agent loop — it would hand Gemini a tool
  * call it considers malformed and lose the turn to a self-inflicted error.
+ *
+ * Anything else that goes wrong before output starts moves to the next
+ * provider, whether or not it is the sort of failure worth retrying: an
+ * exhausted quota, a key that was never valid, a model the account cannot
+ * reach. All three are facts about one vendor, and the answer to a fact about
+ * one vendor is a different vendor.
  */
 export class FallbackProvider implements LLMProvider {
   /**
@@ -83,10 +89,20 @@ export class FallbackProvider implements LLMProvider {
 
       const isLast = i === this.chain.length - 1;
 
-      // A bad key, a rejected request, a model that does not exist — no other
-      // vendor can fix any of those, and walking the chain would just spend
-      // the time budget discovering that four times over.
-      if (committed || !failed.retryable || isLast) {
+      /*
+       * Any failure moves on, not only a rate limit.
+       *
+       * This started out gated on `retryable`, reasoning that no other vendor
+       * can fix a bad key. That was the wrong way round: the error is scoped
+       * to one provider, and so is the fix — the next one in the chain is not
+       * the one with the bad key. Cerebras proved it by answering "payment
+       * required" to every request, which is not retryable in any useful
+       * sense and is precisely when you want the next vendor tried.
+       *
+       * `retryable` still rides on the error, because it means something
+       * different to the reader: whether waiting is worth their while.
+       */
+      if (committed || isLast) {
         yield failed;
         return;
       }

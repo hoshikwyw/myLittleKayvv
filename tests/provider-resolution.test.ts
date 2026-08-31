@@ -43,16 +43,17 @@ test("the chosen model is the one built", () => {
   process.env.GEMINI_API_KEY = "g";
   process.env.GROQ_API_KEY = "k";
 
-  const provider = getChatProvider("groq/llama-3.3-70b");
+  const provider = getChatProvider("groq/gpt-oss-120b");
   assert.equal(provider.name, "groq");
-  assert.equal(provider.model, "llama-3.3-70b-versatile");
+  assert.equal(provider.model, "openai/gpt-oss-120b");
 });
 
 test("an unknown id falls back rather than throwing", () => {
   process.env.GEMINI_API_KEY = "g";
 
-  // What a stale localStorage value looks like after a model is retired.
-  const provider = getChatProvider("groq/model-that-was-removed");
+  // Not hypothetical: "groq/llama-3.3-70b" was in this catalog until the
+  // vendor's own /models endpoint said it does not exist on the account.
+  const provider = getChatProvider("groq/llama-3.3-70b");
   assert.equal(provider.name, "gemini");
 });
 
@@ -61,7 +62,7 @@ test("a model whose key has since been removed falls back", () => {
   // beats an assistant that will not answer until you clear your browser data.
   process.env.GEMINI_API_KEY = "g";
 
-  const provider = getChatProvider("groq/llama-3.3-70b");
+  const provider = getChatProvider("groq/gpt-oss-120b");
   assert.equal(provider.name, "gemini");
 });
 
@@ -89,7 +90,7 @@ test("embeddings ignore the chat choice entirely", () => {
 
   // The whole reason these are two functions: following the chat provider here
   // would write vectors that no stored memory can be compared against.
-  assert.equal(getChatProvider("groq/llama-3.3-70b").name, "groq");
+  assert.equal(getChatProvider("groq/gpt-oss-120b").name, "groq");
   assert.equal(getEmbeddingProvider().name, "gemini");
 });
 
@@ -103,7 +104,7 @@ test("the browser summary lists every model and leaks no keys", () => {
   assert.ok(summaries.length > 1);
   assert.equal(summaries.find((s) => s.id === "gemini/flash")?.available, true);
   assert.equal(
-    summaries.find((s) => s.id === "groq/llama-3.3-70b")?.available,
+    summaries.find((s) => s.id === "groq/gpt-oss-120b")?.available,
     false,
   );
 

@@ -139,19 +139,38 @@ test("usage alone does not commit to a provider", async () => {
   assert.equal(last?.type === "text" ? last.delta : undefined, "Fine");
 });
 
-test("a non-retryable failure stops the chain", async () => {
-  // No other vendor can fix a bad key or a malformed request, and walking the
-  // chain would spend the turn's time budget discovering that four times over.
+test("a failure no amount of waiting would fix still moves on", async () => {
+  /**
+   * This test used to assert the opposite, on the reasoning that no other
+   * vendor can fix a bad key. That was the wrong way round: the error belongs
+   * to one provider and so does the fix — the next in the chain is not the one
+   * with the bad key.
+   *
+   * Cerebras settled it by answering "payment required" to every request,
+   * which is not retryable in any useful sense and is exactly when you want
+   * the next vendor tried.
+   */
   const calls: string[] = [];
   const chain = new FallbackProvider([
-    scripted("gemini", [badKey], calls),
-    scripted("groq", [text("never")], calls),
+    scripted("cerebras", [badKey], calls),
+    scripted("groq", [text("Answered anyway")], calls),
   ]);
 
   const events = await collect(chain);
 
-  assert.deepEqual(calls, ["gemini"]);
-  assert.equal(events.at(-1)?.type, "error");
+  assert.deepEqual(calls, ["cerebras", "groq"]);
+  assert.ok(!events.some((e) => e.type === "error"));
+});
+
+test("the last provider's failure is reported however it failed", async () => {
+  // Moving on is only possible while there is somewhere to move to.
+  const chain = new FallbackProvider([scripted("groq", [badKey])]);
+
+  const events = await collect(chain);
+  const error = events.find((e) => e.type === "error");
+
+  assert.match(error?.message ?? "", /Invalid API Key/);
+  assert.equal(error?.retryable, false);
 });
 
 test("once it falls back it stays fallen back", async () => {

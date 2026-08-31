@@ -29,15 +29,18 @@ point: you will hit its 200,000-token ceiling at about 28 turns.
 | Provider | Free limit | Turns/day here | Card? | Trains on your data? |
 |---|---|---|---|---|
 | **Gemini** (already set up) | ~250 req/day | ~125 | no | no |
-| **Groq** | 200K tokens/day | ~28 | no | no |
-| **Cerebras** | 1M tokens/day | ~140 * | no | no |
+| **Groq** | 200K tokens/day | ~28–38 | no | no |
+| **Cerebras** | 1M tokens/day | — see below | **yes, in practice** | no |
 | **OpenRouter** | 50 req/day unfunded | ~25 | no | **yes, required** |
 | **Mistral** | ~1B tokens/month | plenty | no | **yes, unless you opt out** |
 
-\* Cerebras caps free context at 8K tokens, so long conversations will fail
-part-way even though the daily budget is huge.
-
 Numbers change often — check each console for what your account actually has.
+
+**Do not trust a model name from documentation.** Every model in this project's
+catalog was read off the vendor's own `/models` endpoint and then sent a real
+request. Two that the docs describe at length — Llama 3.3 70B on Groq, Qwen 32B
+on Cerebras — do not exist on a new account at all, and sat in the list
+answering *"model does not exist"* until they were actually called.
 
 ---
 
@@ -60,33 +63,59 @@ Paste it into `.env.local`:
 GROQ_API_KEY=gsk_...
 ```
 
-That unlocks two models in the picker: **Qwen 3.6 27B** and **Llama 3.3 70B**.
-Qwen is listed first because it has twice Llama's daily token budget.
+That unlocks three models in the picker. All three were tested against the
+real API with this project's actual thirteen tool schemas:
+
+| Model | Answered in | Prompt cost | Notes |
+|---|---|---|---|
+| **GPT-OSS 120B** | ~2.3s | 2,587 tokens | The one to use. |
+| **GPT-OSS 20B** | ~1.4s | 2,587 tokens | Quickest, but see below. |
+| **Qwen 3.8 27B** | ~1.1s | 3,568 tokens | Strong, dearer prompt. |
+
+The prompt cost column is why GPT-OSS is listed first. Same prompt, same tools,
+but its tokenizer encodes them in 27% fewer tokens — and against a fixed 200K
+daily ceiling that is roughly 38 turns a day instead of 28.
+
+**GPT-OSS 20B follows instructions less carefully.** Asked for one sentence it
+answered correctly and then appended a markdown `*Details:*` block, which the
+system prompt explicitly asks against because replies here get read aloud. Fast
+and fine for a quick question; the 120B is the better default.
 
 ---
 
-## 2. Cerebras — the biggest daily budget
+## 2. Cerebras — biggest budget, but it wants billing
 
-Worth having as a third option, with one real caveat.
+Advertised as 1M tokens a day with no card. In practice a fresh key answers:
+
+```
+Payment required to access this resource. Visit your billing tab.
+```
+
+That was true for every model on the account, so the free tier is not something
+you simply get on signup. If you want to try:
 
 1. Go to **[cloud.cerebras.ai](https://cloud.cerebras.ai)** and sign up.
-2. Verify your email and log in.
-3. Click **API Keys** in the left sidebar.
-4. Click **Generate API Key**, name it `kayv`.
-5. Copy it immediately — like Groq's, it is shown once.
+2. Click **API Keys** in the left sidebar.
+3. Click **Generate API Key**, name it `kayv`. Copy it immediately — it is
+   shown once.
+4. Check the **Billing** tab. Until something there is activated, every request
+   is refused.
 
 ```bash
 CEREBRAS_API_KEY=csk-...
 ```
 
-**The caveat.** Cerebras caps free-tier context at 8,192 tokens. A single call
-here is about 3,200, so short exchanges are fine — but add a few turns of
-history and tool results and the request will be rejected mid-conversation.
+**Adding the key anyway is harmless.** Kayv treats "payment required" like any
+other provider failure and moves to the next model in the chain, saying so in
+the panel. The model appears in the picker; choosing it explicitly just falls
+straight through to whatever can answer.
 
-This is why Cerebras sits *below* Groq in the fallback order despite having
-five times the daily budget: fallback fires part-way through a conversation,
-which is exactly when the history is already long. The provider with the best
-numbers on paper is the one most likely to refuse at the moment you need it.
+**The other caveat**, if you do enable it: free-tier context stops at 8,192
+tokens. A single call here is about 3,200, so short exchanges are fine — but a
+few turns of history and tool results will be rejected mid-conversation. That
+is why Cerebras sits *below* Groq in the fallback order despite the bigger
+budget: fallback fires part-way through a conversation, exactly when the
+history is already long.
 
 ---
 

@@ -82,13 +82,18 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
  * a tool-using turn takes. So the binding limit is tokens per day, not
  * requests per day, and Groq's generous request ceiling is beside the point.
  *
- * Cerebras sits below Groq despite having by far the largest token budget,
- * because its free tier caps context at 8K. Fallback fires part-way through a
- * conversation, which is exactly when the history is already long — so the
- * provider most likely to refuse the request is the one whose daily allowance
- * looks best on paper. The two that involve training on your data come last:
- * OpenRouter's free endpoints require it to be switched on, and Mistral's free
- * tier does it unless you opt out. This assistant stores facts about people.
+ * Every model name here was read off the vendor's own /models endpoint rather
+ * than out of its documentation. Two that the docs describe at length —
+ * Llama 3.3 70B on Groq, Qwen 32B on Cerebras — do not exist on these accounts
+ * at all, and were sitting in this list answering "model does not exist".
+ *
+ * Cerebras sits below Groq despite the largest advertised budget: it answers
+ * "payment required" until billing is enabled, and its free context stops at
+ * 8K, which is the wrong shape for a fallback — that fires part-way through a
+ * conversation, exactly when the history is already long. The two that involve
+ * training on your data come last: OpenRouter's free endpoints require it to
+ * be switched on, and Mistral's free tier does it unless you opt out. This
+ * assistant stores facts about people.
  */
 export const MODELS: ModelChoice[] = [
   {
@@ -99,25 +104,35 @@ export const MODELS: ModelChoice[] = [
     note: "Best free capacity here. Handles long conversations.",
   },
   {
-    id: "groq/qwen-3.6-27b",
+    id: "groq/gpt-oss-120b",
     provider: "groq",
-    model: "qwen/qwen3.6-27b",
-    label: "Qwen 3.6 27B",
-    note: "Fast, strong tool use, no context limit. ~28 turns a day.",
+    model: "openai/gpt-oss-120b",
+    label: "GPT-OSS 120B",
+    // Measured, not guessed: this encodes the same prompt in 2,587 tokens
+    // where the Qwen models take 3,568 — a 27% cheaper turn against the same
+    // 200K daily ceiling, which is most of why it is first among Groq's.
+    note: "Fast, and the cheapest per turn on Groq. ~38 turns a day.",
   },
   {
-    id: "groq/llama-3.3-70b",
+    id: "groq/gpt-oss-20b",
     provider: "groq",
-    model: "llama-3.3-70b-versatile",
-    label: "Llama 3.3 70B",
-    note: "Stronger, but half the daily token budget. ~14 turns a day.",
+    model: "openai/gpt-oss-20b",
+    label: "GPT-OSS 20B",
+    note: "The quickest to answer. Smaller, so weaker on a hard question.",
   },
   {
-    id: "cerebras/qwen-3.6-32b",
+    id: "groq/qwen-3.8-27b",
+    provider: "groq",
+    model: "qwen/qwen3.8-27b",
+    label: "Qwen 3.8 27B",
+    note: "Strong tool use, but a dearer prompt. ~28 turns a day.",
+  },
+  {
+    id: "cerebras/gpt-oss-120b",
     provider: "cerebras",
-    model: "qwen-3.6-32b",
-    label: "Qwen 3.6 32B",
-    note: "1M tokens a day, but free context stops at 8K — short threads only.",
+    model: "gpt-oss-120b",
+    label: "GPT-OSS 120B",
+    note: "1M tokens a day — but the account needs billing enabled first.",
   },
   {
     id: "openrouter/free",
@@ -127,8 +142,6 @@ export const MODELS: ModelChoice[] = [
     // only from models that cost nothing. Easy to confuse, expensive to.
     model: "openrouter/free",
     label: "OpenRouter Free",
-    // Its free endpoints require training and logging to be switched on, which
-    // is the same objection as Mistral — see SETUP-MODELS.md.
     note: "Routes across free models. Requires allowing training in their settings.",
   },
   {
