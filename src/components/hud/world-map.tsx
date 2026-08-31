@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { MAP_HEIGHT, MAP_WIDTH, type WorldPaths } from "@/lib/map/world";
+import {
+  MAP_HEIGHT,
+  MAP_WIDTH,
+  pointInBox,
+  type WorldPaths,
+} from "@/lib/map/world";
 import { cn } from "@/lib/utils";
 
 /**
@@ -49,23 +54,21 @@ export function WorldMap({
   /**
    * Where in the map a pointer event landed.
    *
-   * Read from the SVG's own coordinate space rather than the element's pixel
-   * box, so it stays correct however the panel is sized — including full
-   * screen, where the two differ a great deal.
+   * The arithmetic lives in `lib/map/world.ts` so it can be tested: the SVG
+   * letterboxes to keep the world the right shape, and getting that offset
+   * wrong misplaces every click by an amount that varies with the panel's
+   * proportions — which is to say, subtly and never reproducibly.
    */
   const pointFrom = useCallback(
     (event: React.PointerEvent<SVGSVGElement>): MapPoint | null => {
-      const svg = event.currentTarget;
-      const rect = svg.getBoundingClientRect();
-      if (!rect.width || !rect.height) return null;
+      const rect = event.currentTarget.getBoundingClientRect();
 
-      const x = ((event.clientX - rect.left) / rect.width) * MAP_WIDTH;
-      const y = ((event.clientY - rect.top) / rect.height) * MAP_HEIGHT;
-
-      return {
-        latitude: Number((MAP_HEIGHT / 2 - y).toFixed(2)),
-        longitude: Number((x - MAP_WIDTH / 2).toFixed(2)),
-      };
+      return pointInBox(
+        rect.width,
+        rect.height,
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+      );
     },
     [],
   );
@@ -73,10 +76,11 @@ export function WorldMap({
   const marker = selected ?? hover;
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative flex min-h-0", className)}>
       <svg
         viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
-        className="h-auto w-full cursor-crosshair touch-none"
+        preserveAspectRatio="xMidYMid meet"
+        className="h-full max-h-full w-full flex-1 cursor-crosshair touch-none"
         role="img"
         aria-label="World map. Click anywhere to read the local time and weather."
         onPointerMove={(e) => setHover(pointFrom(e))}

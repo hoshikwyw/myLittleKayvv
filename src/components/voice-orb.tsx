@@ -111,11 +111,28 @@ export function VoiceOrb({
   const interactive = Boolean(onClick) && !disabled;
   const still = reduceMotion || state === "error";
 
+/** 14rem where there is room, less on a short window. */
+const ORB_SIZE = "min(12rem, 22vh)";
+/** The core, kept at the same fraction of the whole it always was. */
+const CORE_SIZE = "min(5.15rem, 9.43vh)";
+
   const Wrapper = interactive ? motion.button : motion.div;
 
   return (
     <div className={cn("flex flex-col items-center gap-6", className)}>
-      <div className="relative grid size-56 place-items-center">
+      {/*
+        Fluid rather than fixed.
+        
+        At 14rem flat the reactor pushed the world map out of the bottom of a
+        short window. Sizing from viewport height instead lets the centre
+        column stay inside the screen on a laptop, and the two inner circles
+        are expressed as fractions of the same measure so the proportions hold
+        at every size.
+      */}
+      <div
+        className="relative grid place-items-center"
+        style={{ width: ORB_SIZE, height: ORB_SIZE }}
+      >
         {/* Bloom: gives the reactor a light source rather than floating flat. */}
         <span
           aria-hidden="true"
@@ -124,6 +141,8 @@ export function VoiceOrb({
             !still && "animate-bloom",
           )}
           style={{
+            width: CORE_SIZE,
+            height: CORE_SIZE,
             background: `radial-gradient(circle, color-mix(in oklab, ${colour} 60%, transparent) 0%, transparent 70%)`,
             opacity: "var(--glow-strength)",
           }}
@@ -239,8 +258,8 @@ export function VoiceOrb({
               <motion.span
                 key={delay}
                 aria-hidden="true"
-                className="absolute size-24 rounded-full border"
-                style={{ borderColor: colour }}
+                className="absolute rounded-full border"
+                style={{ width: CORE_SIZE, height: CORE_SIZE, borderColor: colour }}
                 initial={{ scale: 0.9, opacity: 0.6 }}
                 animate={{ scale: 2, opacity: 0 }}
                 transition={{
@@ -264,7 +283,7 @@ export function VoiceOrb({
               }
             : { "aria-hidden": true })}
           className={cn(
-            "relative size-24 rounded-full outline-none",
+            "relative rounded-full outline-none",
             "focus-visible:ring-accent focus-visible:ring-offset-bg focus-visible:ring-2 focus-visible:ring-offset-4",
             interactive && "cursor-pointer",
             disabled && "cursor-not-allowed opacity-50",

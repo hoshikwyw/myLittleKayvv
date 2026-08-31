@@ -52,8 +52,20 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      {/*
+        `h-full` and clipped, not `min-h-full`.
+        
+        A minimum height only ever grows: it lets the document run past the
+        bottom of the window and hands the page a scrollbar, which is what put
+        the world map below the fold. Fixing the height here is what makes the
+        workspace's `min-h-0` columns mean anything — without a bounded
+        ancestor, "share the space available" has no space to share.
+
+        `dvh` rather than `vh` so a mobile browser's collapsing address bar
+        does not leave a strip of the interface underneath it.
+      */}
       <body
-        className="bg-bg text-text flex min-h-full flex-col font-sans"
+        className="bg-bg text-text flex h-full max-h-dvh flex-col overflow-hidden font-sans"
         suppressHydrationWarning
       >
         {children}

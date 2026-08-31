@@ -58,7 +58,7 @@ interface PanelMeta {
   title: string;
   icon: typeof Brain;
   /** Where it sits when open, on a screen wide enough to place things. */
-  column: "left" | "right";
+  column: "left" | "centre" | "right";
 }
 
 const PANELS: PanelMeta[] = [
@@ -67,7 +67,11 @@ const PANELS: PanelMeta[] = [
   { id: "chat", title: "Conversation", icon: MessageSquare, column: "right" },
   { id: "people", title: "Memory", icon: Brain, column: "right" },
   { id: "plans", title: "Plans", icon: ListChecks, column: "left" },
-  { id: "map", title: "World", icon: Globe2, column: "right" },
+  // The centre, not the right column. The map is the only panel that is
+  // landscape rather than a list, and the middle is both the widest space and
+  // the emptiest — putting it there stops the right column running past the
+  // bottom of the window and gives the reactor something to sit above.
+  { id: "map", title: "World", icon: Globe2, column: "centre" },
 ];
 
 /** Open on first load: enough to be useful, not so much it is a wall. */
@@ -77,7 +81,7 @@ const INITIAL: Record<PanelId, PanelState | null> = {
   chat: "open",
   people: "open",
   plans: null,
-  map: null,
+  map: "open",
 };
 
 export function HudWorkspace({
@@ -223,20 +227,47 @@ export function HudWorkspace({
         return <PlansBody overview={overview} />;
       case "map":
         return (
-          <div className="flex flex-col">
+          /*
+           * The map shrinks; the readouts under it do not.
+           *
+           * `h-full` takes the height the panel body already has, so the SVG
+           * scales down to whatever is left rather than keeping its own
+           * 2:1 height and pushing half of itself below the fold — which is
+           * what it did in a column wide enough to make 2:1 taller than the
+           * window.
+           */
+          <div className="flex h-full flex-col">
             <WorldMap
               paths={worldPaths}
               selected={place}
               home={home}
               onSelect={setPlace}
-              className="p-2"
+              // A floor as well as a ceiling: in a short window the read-outs
+              // would otherwise squeeze the map down to a sliver of ocean.
+              className="min-h-[8rem] flex-1 p-2"
             />
             {place && (
-              <>
-                <PlaceReadout point={place} homeZone={timezone} />
-                <WeatherReadout point={place} />
+              <div className="@container shrink-0">
+                {/*
+                  Side by side once there is width for it. Stacked, these two
+                  read-outs are five rows deep in a column wide enough for
+                  ten — and every row they take is a row the map does not get.
+
+                  A container query, not a screen one. The panel is a third of
+                  the window, so asking how wide the *window* is put two
+                  columns into a 300px panel on a small laptop and truncated
+                  "Asia/Yangon" to "A". What matters is the width of this box.
+
+                  `@container` goes on the parent, not on the grid: an element
+                  cannot answer a query about its own size, and putting it here
+                  silently left the read-outs stacked at every width.
+                */}
+                <div className="grid @lg:grid-cols-2">
+                  <PlaceReadout point={place} homeZone={timezone} />
+                  <WeatherReadout point={place} className="@lg:border-l" />
+                </div>
                 <AskAboutHere onAsk={askAboutHere} busy={assistant.busy} />
-              </>
+              </div>
             )}
           </div>
         );
@@ -286,13 +317,33 @@ export function HudWorkspace({
         live={panel.id === "chat" && assistant.busy}
         onStateChange={(next) => setPanel(panel.id, next)}
         onClose={() => setPanel(panel.id, null)}
+        /*
+         * Weights, not heights.
+         *
+         * Fixed heights are what pushed the right column past the bottom of
+         * the window: three panels each insisting on their own size add up to
+         * more than there is. Sharing the column instead means the total is
+         * always exactly the space available, whatever is open.
+         *
+         * A minimised panel is only a title bar and must not claim a share.
+         */
         className={cn(
-          panel.id === "chat" && state === "open" && "h-[22rem]",
-          panel.id === "map" && state === "open" && "max-h-[32rem]",
-          panel.id !== "chat" &&
-            panel.id !== "map" &&
-            state === "open" &&
-            "max-h-[16rem]",
+          state === "minimised" && "flex-none",
+          // Only where the column is bounded. Below `lg` the workspace scrolls,
+          // and dividing a scrolling column by weight gives each panel a slice
+          // of the *visible* height instead of the height it needs — which
+          // squeezed the conversation down to a sliver on a phone.
+          state === "open" && "lg:min-h-0",
+          // Stacked, a panel must keep its own height and let the column
+          // scroll. Flex items shrink by default, so inside a bounded column
+          // they squashed instead of overflowing — "Upcoming" came out as a
+          // 24px title bar with its body pressed to nothing.
+          state === "open" && "shrink-0 lg:shrink",
+          // The conversation earns more room than a read-out beside it.
+          state === "open" && panel.id === "chat" && "h-[22rem] lg:h-auto lg:flex-[2]",
+          state === "open" && panel.id !== "chat" && "lg:flex-1",
+          // A stacked panel with nothing in it should not be a tall empty box.
+          state === "open" && panel.id !== "chat" && "max-h-[18rem] lg:max-h-none",
         )}
       >
         {body(panel.id)}
@@ -300,41 +351,58 @@ export function HudWorkspace({
     );
   }
 
-  const column = (side: "left" | "right") =>
+  const column = (side: "left" | "centre" | "right") =>
     PANELS.filter(
       (p) => p.column === side && panels[p.id] && panels[p.id] !== "maximised",
     ).map(renderPanel);
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-      {/* The reactor sits behind everything, centred, as the ground the
-          panels are arranged around. */}
-      <div className="pointer-events-none absolute inset-0 grid place-items-center">
-        <div className="pointer-events-auto flex flex-col items-center gap-4">
-          <VoiceOrb
-            state={assistant.state}
-            onClick={voice.capabilities.listen ? toggleMic : undefined}
-          />
-          <p className="hud-label text-center">{today}</p>
-        </div>
-      </div>
-
       {/*
-        Panels float over the reactor: two columns on a wide screen, one
-        stacked column on a narrow one.
+        Three columns on a wide screen, one stacked column on a narrow one.
 
-        Each panel is rendered exactly once. Rendering the right-hand column a
-        second time for small screens and hiding one copy leaves both in the
-        DOM — two textareas labelled "Message", two of every button — which is
-        invisible to the eye and a mess for anything reading the page aloud.
+        Each panel is rendered exactly once. Rendering a column a second time
+        for small screens and hiding one copy leaves both in the DOM — two
+        textareas labelled "Message", two of every button — which is invisible
+        to the eye and a mess for anything reading the page aloud.
+
+        Below `lg` this scrolls, deliberately. Six panels forced into a phone
+        viewport would be about eighty pixels each, which is not a layout, it
+        is a list of title bars. Horizontal overflow is prevented at every
+        width; vertical is only prevented where the result is still usable.
       */}
-      <div className="pointer-events-none relative z-10 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 lg:grid lg:grid-cols-[22rem_1fr_22rem] lg:items-start lg:overflow-hidden">
-        <div className="flex flex-col gap-3">{column("left")}</div>
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto p-3 lg:grid lg:grid-cols-[21rem_minmax(0,1fr)_21rem] lg:items-stretch lg:overflow-hidden">
+        <div className="flex min-h-0 flex-col gap-3">{column("left")}</div>
 
-        {/* Keeps the middle clear so the reactor shows between the columns. */}
-        <div className="hidden lg:block" aria-hidden="true" />
+        {/*
+          The reactor, and the world beneath it.
 
-        <div className="flex flex-col gap-3">{column("right")}</div>
+          The orb takes whatever the map does not, so closing the map leaves it
+          centred in the whole column exactly as it was before, and opening the
+          map slides it up rather than covering it.
+        */}
+        <div className="flex min-h-0 flex-col gap-3">
+          {/*
+            The reactor takes only what it needs, so the map gets the rest.
+            
+            Sharing the column evenly gave the map a strip barely taller than
+            its own readouts — and it is the panel with something to show,
+            while the orb is the same size whatever happens to it.
+          */}
+          <div className="grid min-h-0 shrink place-items-center overflow-hidden py-2">
+            <div className="flex flex-col items-center gap-4">
+              <VoiceOrb
+                state={assistant.state}
+                onClick={voice.capabilities.listen ? toggleMic : undefined}
+              />
+              <p className="hud-label text-center">{today}</p>
+            </div>
+          </div>
+
+          {column("centre")}
+        </div>
+
+        <div className="flex min-h-0 flex-col gap-3">{column("right")}</div>
       </div>
 
       {/*

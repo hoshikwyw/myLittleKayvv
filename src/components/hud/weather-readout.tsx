@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { Conditions, WeatherKind } from "@/lib/weather/types";
 import type { MapPoint } from "./world-map";
+import { cn } from "@/lib/utils";
 
 /**
  * What it is like where you pointed.
@@ -34,7 +35,13 @@ interface Result {
   conditions: Conditions | null;
 }
 
-export function WeatherReadout({ point }: { point: MapPoint }) {
+export function WeatherReadout({
+  point,
+  className,
+}: {
+  point: MapPoint;
+  className?: string;
+}) {
   const key = `${point.latitude},${point.longitude}`;
   const [result, setResult] = useState<Result | null>(null);
 
@@ -65,7 +72,7 @@ export function WeatherReadout({ point }: { point: MapPoint }) {
 
   if (conditions === undefined) {
     return (
-      <div className="border-border/60 border-t px-3 py-2.5">
+      <div className={cn("border-border/60 border-t px-3 py-2.5", className)}>
         <p className="hud-label animate-pulse">reading conditions…</p>
       </div>
     );
@@ -73,14 +80,19 @@ export function WeatherReadout({ point }: { point: MapPoint }) {
 
   if (conditions === null) {
     return (
-      <div className="border-border/60 border-t px-3 py-2.5">
+      <div className={cn("border-border/60 border-t px-3 py-2.5", className)}>
         <p className="text-text-faint text-xs">No reading for this point.</p>
       </div>
     );
   }
 
   return (
-    <div className="border-border/60 flex flex-col gap-2 border-t px-3 py-2.5">
+    <div
+      className={cn(
+        "border-border/60 flex flex-col gap-2 border-t px-3 py-2.5",
+        className,
+      )}
+    >
       <div className="flex items-center gap-3">
         <WeatherIcon
           kind={conditions.kind}

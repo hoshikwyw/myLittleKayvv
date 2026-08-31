@@ -1017,7 +1017,62 @@ The subsystem row it sat above is now labelled "gemini (memory)" rather than
 being off means memory cannot be written even while another provider answers
 happily.
 
-## 28. Open questions
+## 28. Making it fit the window
+
+The right-hand column had grown past the bottom of the screen: conversation,
+memory and the world map stacked with a fixed height each, adding up to more
+than there was. The map was the half you could not see.
+
+**The map moved to the middle.** It is the only panel that is landscape rather
+than a list, and the centre was both the widest space and the emptiest — the
+reactor floated in it with nothing else. Now the reactor takes only the height
+it needs and the map takes the rest, which relieves the right column and gives
+the centre something to be.
+
+**Weights, not heights.** Panels no longer each insist on a size; they share
+their column, so the total is always exactly the space available whatever is
+open. That only means anything with a bounded ancestor, and there was not one:
+`body` was `min-h-full`, which can only grow. It is `h-full max-h-dvh` and
+clipped now — `dvh` so a phone's collapsing address bar does not hide a strip
+of the interface.
+
+**Three separate bugs, each found by measuring rather than looking.**
+
+A headless browser at seven sizes reported document height against viewport
+height. The map SVG was still overflowing its own panel — `h-auto` derives
+height from width, and in a column wide enough that meant a map taller than the
+window. It now scales to fit whatever box it is given.
+
+Below `lg` the panels *shrank* instead of overflowing into the scroll, because
+flex items shrink by default: "Upcoming" measured 24 pixels, a title bar with
+its body pressed to nothing. Stacked panels are `shrink-0` now, and the flex
+weights apply only from `lg` up, where the column is bounded.
+
+And the read-outs under the map were paired with a screen breakpoint when the
+thing that varies is the panel, which is a third of the window — two columns
+inside a 300px panel truncated "Asia/Yangon" to "A". It is a container query
+now, and `@container` belongs on the parent: an element cannot answer a query
+about its own size, and having it on the grid itself left the read-outs stacked
+at every width while looking entirely correct in the source.
+
+**The click maths had to change with it.** A letterboxed SVG means the
+element's pixel box is not the map — there are bars around it whose size
+depends on how square the panel is. Dividing a click by the element's own width
+and height is right at exactly 2:1 and wrong everywhere else, drifting further
+the squarer the container gets. The arithmetic moved to `pointInBox` in
+`lib/map/world.ts` so it could be tested, including the case that would have
+been silently wrong: in a square box, a click a quarter of the way down is the
+equator, not 45°N. A click in the letterbox returns null rather than clamping
+to the nearest edge, which would put the marker somewhere the pointer never
+was. Verified afterwards by clicking three known cities in a real browser at
+two very different ratios; all six landed exactly.
+
+Below `lg` the workspace scrolls, deliberately. Six panels forced into a phone
+viewport would be eighty pixels each, which is not a layout, it is a list of
+title bars. Horizontal overflow is prevented at every width; vertical only
+where the result is still usable.
+
+## 29. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

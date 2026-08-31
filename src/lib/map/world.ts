@@ -84,3 +84,44 @@ export function unproject(x: number, y: number): {
     longitude: x - MAP_WIDTH / 2,
   };
 }
+
+/**
+ * A click inside the rendered SVG box, turned into somewhere on Earth.
+ *
+ * The SVG fills whatever box the layout gives it and letterboxes to keep the
+ * world the right shape, so the element's pixel box is *not* the map — there
+ * are bars above and below it, or to either side, depending on how square the
+ * panel happens to be. Dividing the click by the element's own width and
+ * height is therefore correct at exactly 2:1 and wrong everywhere else,
+ * drifting further the squarer the container gets.
+ *
+ * This reconstructs the drawn area the way `preserveAspectRatio="xMidYMid
+ * meet"` computes it: one scale factor for both axes, content centred in
+ * whatever is left over.
+ *
+ * Returns null for a click in the letterbox. Clamping to the nearest edge
+ * instead would silently place the marker somewhere the pointer never was.
+ */
+export function pointInBox(
+  boxWidth: number,
+  boxHeight: number,
+  offsetX: number,
+  offsetY: number,
+): { latitude: number; longitude: number } | null {
+  if (boxWidth <= 0 || boxHeight <= 0) return null;
+
+  const scale = Math.min(boxWidth / MAP_WIDTH, boxHeight / MAP_HEIGHT);
+  if (scale <= 0) return null;
+
+  const x = (offsetX - (boxWidth - MAP_WIDTH * scale) / 2) / scale;
+  const y = (offsetY - (boxHeight - MAP_HEIGHT * scale) / 2) / scale;
+
+  if (x < 0 || x > MAP_WIDTH || y < 0 || y > MAP_HEIGHT) return null;
+
+  const { latitude, longitude } = unproject(x, y);
+
+  return {
+    latitude: Number(latitude.toFixed(2)),
+    longitude: Number(longitude.toFixed(2)),
+  };
+}
