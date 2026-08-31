@@ -817,6 +817,33 @@ groupings are not regular: 45 and 48 are both fog, 51/53/55 are drizzle by
 intensity, but 56/57 are freezing drizzle and 66/67 are freezing rain. An
 unknown code reports "unknown conditions" rather than guessing.
 
+**Asking out loud.** A `weather_at` tool, so "what's it like in Tokyo?" is
+answered rather than guessed at. It joins the builtins rather than the
+credentialed tools, because both the geocoder and the weather service are
+keyless — it cannot be the tool that always fails on a fresh checkout, which is
+what teaches a model to stop reaching for something.
+
+It returns the local time alongside the conditions. The two questions arrive
+together often enough, and the time costs nothing extra: it is an offline table
+lookup, not a second round trip. When the weather service is down the tool still
+returns the time rather than throwing away the half of the answer that worked.
+
+Place names are resolved with Open-Meteo's geocoder, kept deliberately separate
+from `find_places` — that searches for businesses near you, this puts a town on
+the globe, and one tool with two jobs is how a model ends up calling the wrong
+one.
+
+The interesting problem is ranking. The geocoder orders by population, which is
+a poor proxy for what a person has in mind: ask for Bagan and it offers a
+Russian village of 5,800 ahead of the temple city in Myanmar, whose resident
+population is 300. The fix reuses what is already there — every candidate
+carries a timezone, so a candidate matching the user's own timezone is preferred
+as a cheap stand-in for "same country". Where that guesses wrong (a British user
+saying "Boston" gets Lincolnshire, not Massachusetts) the reading is still
+defensible, and the tool reports that it overrode the ranking so the assistant
+says which one it used. Alternatives come back either way, capped at three,
+because the tail is noise the model pays for on every call.
+
 ## 25. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation

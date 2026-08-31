@@ -5,6 +5,7 @@ import { createPlanTools } from "@/lib/tools/plan-tools";
 import { findPlaces } from "@/lib/tools/places";
 import { searchWeb } from "@/lib/tools/search";
 import { readCalendar } from "@/lib/tools/calendar";
+import { weatherAt } from "@/lib/tools/weather";
 import { configured } from "@/lib/env";
 
 /**
@@ -18,7 +19,9 @@ import { configured } from "@/lib/env";
  * the model a tool that always fails teaches it to stop trying.
  */
 export function buildToolRegistry(log: MemoryWriteLog): ToolRegistry {
-  const registry = new ToolRegistry().register(...builtinTools);
+  // Weather joins the builtins rather than the credentialed tools: its
+  // geocoder and provider are both keyless, so it always works.
+  const registry = new ToolRegistry().register(...builtinTools, weatherAt);
 
   if (configured.database()) {
     registry.register(...createMemoryTools(log), ...createPlanTools(log));
