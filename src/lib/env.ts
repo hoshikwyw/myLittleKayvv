@@ -39,6 +39,24 @@ export const env = {
     return optional("GEMINI_EMBEDDING_MODEL", "gemini-embedding-2");
   },
 
+  /**
+   * Fallback chat providers. All four speak OpenAI's chat-completions shape,
+   * so they share one adapter and differ only by key, base URL and model.
+   * Absent is normal: a provider without a key is simply not offered.
+   */
+  get groqApiKey() {
+    return optional("GROQ_API_KEY");
+  },
+  get cerebrasApiKey() {
+    return optional("CEREBRAS_API_KEY");
+  },
+  get mistralApiKey() {
+    return optional("MISTRAL_API_KEY");
+  },
+  get openrouterApiKey() {
+    return optional("OPENROUTER_API_KEY");
+  },
+
   // --- Database (Part 1) ---
   get databaseUrl() {
     return required("DATABASE_URL");

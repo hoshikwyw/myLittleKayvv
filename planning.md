@@ -894,7 +894,53 @@ well as a different colour, because the two markers overlap when you click near
 home and colour alone would not separate them for anyone who cannot tell amber
 from cyan.
 
-## 25. Open questions
+## 25. More than one model
+
+Risk R2 was that Google narrows the free tier. It did not need to — a day of
+testing exhausted it, and every turn came back "I've used up today's free
+allowance". The answer is what `types.ts` promised on day one: a second file,
+not a refactor.
+
+**Measured before choosing.** A turn here costs roughly 7,000 tokens: about
+2,900 of fixed overhead — 809 for the system prompt, 2,095 for thirteen tool
+schemas — resent on every call, times the two-or-more calls a tool-using turn
+takes. That reframes the comparison entirely. The binding limit is tokens per
+day, not requests per day, so Groq's 14,400-requests-a-day headline is beside
+the point; its 200K token ceiling caps this app at about 28 turns. The current
+Gemini free tier is genuinely better for this workload than the obvious
+alternative, which is not what the marketing pages suggest.
+
+**One adapter, four vendors.** Groq, Cerebras, Mistral and OpenRouter all speak
+OpenAI's chat-completions shape, so they differ only by base URL, model and key.
+Gemini keeps its own adapter because it is a genuinely different protocol.
+
+The decoding is where the risk lives, not the HTTP. Tool calls arrive split
+across chunks — the name once, then arguments as JSON fragments that are not
+individually parseable — so they are assembled by `index` and emitted only when
+the stream ends. Two details are each one character wide and each would fail
+quietly: merging the name with `||` rather than `??`, because a continuation
+fragment carrying `name: ""` would otherwise erase the real one and drop the
+call; and keeping the tail of the read buffer, because a chunk boundary can
+land in the middle of a JSON object. Both have tests, the second driven a byte
+at a time.
+
+**The trap worth naming.** Four call sites embedded through `getProvider()`.
+Had the chat provider become swappable without touching them, selecting Groq
+would have embedded new memories with a different model — and vectors from two
+models are not comparable, so the write would succeed, the fact would be
+unfindable, and recall would degrade with nothing in the logs. `getChatProvider`
+and `getEmbeddingProvider` are now separate functions; embedding is Gemini
+permanently, and the OpenAI-compatible adapter refuses to embed at all rather
+than doing it plausibly.
+
+**Fallback order.** Not the order of the headline numbers. Cerebras has by far
+the largest token budget and sits fourth, because its free tier caps context at
+8K and fallback fires part-way through a conversation — exactly when the history
+is already long. The provider most likely to refuse is the one whose daily
+allowance looks best on paper. Mistral is last: its free tier trains on your
+data unless you opt out, and this assistant stores facts about people.
+
+## 26. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

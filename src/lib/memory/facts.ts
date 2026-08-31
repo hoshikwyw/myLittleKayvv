@@ -1,7 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { EMBEDDING_DIMENSIONS, memories, people, type Memory } from "@/db/schema";
-import { getProvider } from "@/lib/llm";
+import { getEmbeddingProvider } from "@/lib/llm";
 
 /**
  * The semantic half of memory.
@@ -47,7 +47,7 @@ export async function storeMemory(input: StoreMemoryInput): Promise<Memory> {
   // and can be backfilled later.
   let embedding: number[] | null = null;
   try {
-    const [vector] = await getProvider().embed([content], {
+    const [vector] = await getEmbeddingProvider().embed([content], {
       purpose: "document",
       dimensions: EMBEDDING_DIMENSIONS,
     });
@@ -107,7 +107,7 @@ export async function recallMemories({
 
   let queryVector: number[];
   try {
-    const [vector] = await getProvider().embed([trimmed], {
+    const [vector] = await getEmbeddingProvider().embed([trimmed], {
       purpose: "query",
       dimensions: EMBEDDING_DIMENSIONS,
     });

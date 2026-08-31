@@ -11,7 +11,7 @@ import {
   type Person,
   type Plan,
 } from "@/db/schema";
-import { getProvider } from "@/lib/llm";
+import { getEmbeddingProvider } from "@/lib/llm";
 import { validateMonthDay } from "./dates";
 import { parsePlanMoment } from "./plans";
 
@@ -146,7 +146,7 @@ export async function updateMemoryContent(
 
   let embedding: number[] | null = null;
   try {
-    const [vector] = await getProvider().embed([text], {
+    const [vector] = await getEmbeddingProvider().embed([text], {
       purpose: "document",
       dimensions: EMBEDDING_DIMENSIONS,
     });
