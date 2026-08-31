@@ -31,6 +31,7 @@ import {
 import { WorldMap, formatCoordinates, type MapPoint } from "./world-map";
 import { WeatherReadout } from "./weather-readout";
 import { PlaceReadout } from "./place-readout";
+import { zoneAt } from "@/lib/map/local-time";
 import type { WorldPaths } from "@/lib/map/world";
 import type { MemoryOverview } from "@/lib/memory/overview";
 import { cn } from "@/lib/utils";
@@ -108,6 +109,20 @@ export function HudWorkspace({
   const assistant = useAssistant({
     onDelta: voice.pushSpeech,
     onComplete: voice.flushSpeech,
+    /**
+     * The selected point travels with every turn, typed or spoken, so "what
+     * about here?" resolves without the user having to read coordinates out.
+     * A getter, so this is whatever is selected when they ask rather than when
+     * the hook was built.
+     */
+    focus: () =>
+      place
+        ? {
+            latitude: place.latitude,
+            longitude: place.longitude,
+            zone: zoneAt(place.latitude, place.longitude),
+          }
+        : null,
   });
 
   const { send, setListening } = assistant;
@@ -128,6 +143,19 @@ export function HudWorkspace({
     setPanel("chat", "open");
     void assistant.send(text);
   }, [assistant, input, setPanel]);
+
+  /**
+   * The one-click version of what the focus context already enables.
+   *
+   * Without it the connection between the map and the conversation is
+   * invisible: nothing on screen tells you that asking "what about here?" will
+   * work. Typing your own question is still the general case.
+   */
+  const askAboutHere = useCallback(() => {
+    if (assistant.busy) return;
+    setPanel("chat", "open");
+    void assistant.send("What's it like here right now?");
+  }, [assistant, setPanel]);
 
   /** Reaching for the microphone mid-answer means "stop, listen to me". */
   const toggleMic = useCallback(() => {
@@ -188,6 +216,7 @@ export function HudWorkspace({
               <>
                 <PlaceReadout point={place} homeZone={timezone} />
                 <WeatherReadout point={place} />
+                <AskAboutHere onAsk={askAboutHere} busy={assistant.busy} />
               </>
             )}
           </div>
@@ -419,6 +448,39 @@ export function HudWorkspace({
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Sits under the readout while a point is selected.
+ *
+ * Sends rather than seeding the input, because the label says exactly what it
+ * will do — and a box that fills itself with words you did not type is a worse
+ * surprise than a button that does what it says.
+ */
+function AskAboutHere({
+  onAsk,
+  busy,
+}: {
+  onAsk: () => void;
+  busy: boolean;
+}) {
+  return (
+    <div className="border-border/60 border-t px-3 py-2">
+      <button
+        type="button"
+        onClick={onAsk}
+        disabled={busy}
+        className="border-accent/50 text-accent flex w-full items-center justify-center gap-1.5 rounded-sm border px-2 py-1.5 text-[11px] tracking-wide uppercase transition-all hover:brightness-125 active:scale-[0.99] disabled:opacity-30"
+        style={{
+          background:
+            "linear-gradient(135deg, color-mix(in oklab, var(--accent) 14%, transparent), transparent)",
+        }}
+      >
+        <MessageSquare className="size-3" />
+        Ask about here
+      </button>
     </div>
   );
 }

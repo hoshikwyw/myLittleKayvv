@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   AssistantState,
   ChatStreamEvent,
+  MapFocus,
   MemoryWriteSummary,
   Message,
   ToolActivity,
@@ -51,6 +52,14 @@ export interface AssistantCallbacks {
   onDelta?: (delta: string) => void;
   /** The stream ended, however it ended. */
   onComplete?: () => void;
+  /**
+   * Where the user is pointing on the world map, read at send time.
+   *
+   * A getter rather than a value, so the hook never has to hold or synchronise
+   * map state — and so a spoken turn carries the same context as a typed one
+   * without the voice path knowing the map exists.
+   */
+  focus?: () => MapFocus | null;
 }
 
 export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
@@ -227,6 +236,8 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
       const controller = new AbortController();
       abortRef.current = controller;
 
+      const focus = callbacksRef.current.focus?.() ?? null;
+
       try {
         const response = await fetch("/api/chat", {
           method: "POST",
@@ -236,6 +247,9 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
             ...(conversationIdRef.current
               ? { conversationId: conversationIdRef.current }
               : {}),
+            // Read now rather than when the hook was built, so it is whatever
+            // is selected at the moment of asking.
+            ...(focus ? { focus } : {}),
           }),
           signal: controller.signal,
         });

@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import type { MapFocus } from "@/types";
 
 const MEMORY_AVAILABLE = `## Using memory
 Save as you go. Do not ask permission first — everything you store is shown
@@ -38,6 +39,11 @@ interface PromptContext {
    * nothing is stored.
    */
   memoryAvailable?: boolean;
+  /**
+   * Where the user is pointing on the world map, if anywhere. Present only
+   * while a point is selected, so its absence is meaningful.
+   */
+  focus?: MapFocus | null;
   /** Which external integrations have credentials this turn. */
   available?: {
     maps?: boolean;
@@ -67,9 +73,38 @@ sentence if asked, rather than answering from memory as though you had checked.
 `;
 }
 
+/**
+ * What "here" means this turn.
+ *
+ * Deliberately says the point is a raw map coordinate rather than a named
+ * place, because it is: the user clicked a pixel, and the nearest town may be
+ * a hundred miles away. Telling the model to pass the coordinates through
+ * rather than translate them into a place name is what stops it confidently
+ * naming the wrong city.
+ */
+function describeFocus(focus: MapFocus): string {
+  const ns = focus.latitude >= 0 ? "N" : "S";
+  const ew = focus.longitude >= 0 ? "E" : "W";
+
+  return `
+## Where they are pointing
+${env.ownerName} has a point selected on the world map: ${Math.abs(
+    focus.latitude,
+  ).toFixed(2)}°${ns} ${Math.abs(focus.longitude).toFixed(
+    2,
+  )}°${ew}, in the ${focus.zone} timezone.
+
+"Here", "there", and "this place" mean that point unless they clearly mean
+somewhere else. Pass those exact coordinates to \`weather_at\` rather than
+guessing a place name from them — it is a spot on a map, not a town, and the
+nearest named place may be a long way off.
+`;
+}
+
 export function buildSystemPrompt({
   now = new Date(),
   memoryAvailable = true,
+  focus = null,
   available = {},
 }: PromptContext = {}): string {
   const timezone = env.timezone;
@@ -111,7 +146,7 @@ Remembering the people in ${owner}'s life is the most important thing you do.
 - Bring up what you remember when it is useful, not to show off that you did.
 
 ${memoryAvailable ? MEMORY_AVAILABLE : MEMORY_UNAVAILABLE}
-${describeIntegrations(available)}
+${focus ? describeFocus(focus) : ""}${describeIntegrations(available)}
 ## Honesty
 - If you do not know something, say so in one sentence and stop.
 - If a tool fails, say what failed. Do not paper over it with a guess.

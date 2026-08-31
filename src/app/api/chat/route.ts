@@ -31,6 +31,18 @@ const RequestSchema = z.object({
     .max(100),
   /** Omitted on the first turn; the server returns the id it created. */
   conversationId: z.uuid().optional(),
+  /**
+   * Where the user is pointing on the world map, if anywhere. Sent per turn
+   * rather than stored, because it is a property of this moment — the point
+   * they had selected when they asked, not a preference to be remembered.
+   */
+  focus: z
+    .object({
+      latitude: z.number().min(-90).max(90),
+      longitude: z.number().min(-180).max(180),
+      zone: z.string().max(64),
+    })
+    .optional(),
 });
 
 function encodeEvent(event: ChatStreamEvent): Uint8Array {
@@ -125,6 +137,7 @@ export async function POST(request: Request) {
           turns,
           system: buildSystemPrompt({
             memoryAvailable: configured.database(),
+            focus: parsed.data.focus,
             available: {
               maps: configured.maps(),
               search: configured.search(),

@@ -27,6 +27,21 @@ export type ChatStreamEvent =
   | { type: "error"; message: string; retryable: boolean }
   | { type: "done" };
 
+/**
+ * Where the user is pointing on the world map, sent with each turn.
+ *
+ * Attached to the request rather than pasted into the message, so "what about
+ * here?" reads as a question in the transcript instead of a string of
+ * coordinates — and so the same context reaches a spoken turn, which has no
+ * text box to paste into.
+ */
+export interface MapFocus {
+  latitude: number;
+  longitude: number;
+  /** The IANA zone governing the point, which is a strong hint at the country. */
+  zone: string;
+}
+
 /** Something the assistant stored this turn, offered back as an undo. */
 export interface MemoryWriteSummary {
   kind: "person" | "date" | "fact" | "plan";

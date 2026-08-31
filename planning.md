@@ -844,6 +844,32 @@ defensible, and the tool reports that it overrode the ranking so the assistant
 says which one it used. Alternatives come back either way, capped at three,
 because the tail is noise the model pays for on every call.
 
+**Pointing and asking.** The map and the conversation were two panels that
+did not know about each other; you could read Reykjavik's weather off the map
+and then have to type "Reykjavik" to ask about it. The selected point now
+travels with every turn as a `focus` on the chat request.
+
+Sent per turn rather than stored, because it is a property of the moment — the
+point they had selected when they asked, not a preference to be remembered.
+Attached to the request rather than pasted into the message, so "what about
+here?" reads as a question in the transcript instead of a string of
+coordinates.
+
+The hook takes a *getter* for the focus rather than a value. That means the
+assistant hook never holds or synchronises map state, and — the reason it is
+worth doing this way — a spoken turn carries the same context as a typed one
+without the voice path knowing the map exists.
+
+The prompt says plainly that the point is a raw map coordinate rather than a
+named place, and tells the model to pass the coordinates through to
+`weather_at` instead of translating them. Without that the failure is
+predictable and confident: read 21.17°N 94.86°E, decide it is "Mandalay", and
+answer about a city a hundred kilometres away.
+
+There is a test asserting that every tool the prompt names is actually
+registered. Nothing else imports those strings, so renaming a tool would
+otherwise leave the model being told to call something that no longer exists.
+
 ## 25. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
