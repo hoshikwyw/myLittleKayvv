@@ -85,6 +85,7 @@ export function HudWorkspace({
   timezone,
   today,
   worldPaths,
+  home,
 }: {
   assistantName: string;
   overview: MemoryOverview;
@@ -93,12 +94,22 @@ export function HudWorkspace({
   timezone: string;
   today: string;
   worldPaths: WorldPaths;
+  /** Null when HOME_LOCATION is unset, which is an ordinary state. */
+  home: MapPoint | null;
 }) {
   // The arrangement lives in localStorage, so the workspace is where you left
   // it — see the hook for why that is not React state.
   const [panels, setPanel] = usePanelLayout<PanelId>(INITIAL);
   const [input, setInput] = useState("");
-  const [place, setPlace] = useState<MapPoint | null>(null);
+  /**
+   * The map opens on home rather than empty.
+   *
+   * A blank panel that says "click to select" teaches nothing; one already
+   * showing your own time and weather shows what a click is for. Safe for
+   * hydration because the readouts render a placeholder first and fill in from
+   * an effect, so the server and the first client paint agree.
+   */
+  const [place, setPlace] = useState<MapPoint | null>(home);
 
   const sendRef = useRef<(text: string) => void>(() => {});
   const handleFinalTranscript = useCallback((text: string) => {
@@ -209,6 +220,7 @@ export function HudWorkspace({
             <WorldMap
               paths={worldPaths}
               selected={place}
+              home={home}
               onSelect={setPlace}
               className="p-2"
             />

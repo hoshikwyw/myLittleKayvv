@@ -33,11 +33,14 @@ export const LANDMARKS: Array<MapPoint & { name: string }> = [
 export function WorldMap({
   paths,
   selected,
+  home,
   onSelect,
   className,
 }: {
   paths: WorldPaths;
   selected: MapPoint | null;
+  /** Drawn permanently, so a reading elsewhere always has something to sit against. */
+  home?: MapPoint | null;
   onSelect: (point: MapPoint) => void;
   className?: string;
 }) {
@@ -129,6 +132,7 @@ export function WorldMap({
           opacity="0.35"
         />
 
+        {home && <HomeMark point={home} />}
         {marker && <Reticle point={marker} settled={Boolean(selected)} />}
       </svg>
 
@@ -137,6 +141,31 @@ export function WorldMap({
         {marker ? formatCoordinates(marker) : "click to select"}
       </p>
     </div>
+  );
+}
+
+/**
+ * Where you are, always visible.
+ *
+ * A different shape as well as a different colour, because the two markers sit
+ * on top of each other when you click near home, and colour alone would not
+ * separate them for anyone who cannot distinguish amber from cyan.
+ */
+function HomeMark({ point }: { point: MapPoint }) {
+  const x = MAP_WIDTH / 2 + point.longitude;
+  const y = MAP_HEIGHT / 2 - point.latitude;
+
+  return (
+    <g pointerEvents="none" opacity="0.9">
+      <title>Home</title>
+      <path
+        d={`M ${x} ${y - 2.6} L ${x + 2.6} ${y} L ${x} ${y + 2.6} L ${x - 2.6} ${y} Z`}
+        fill="none"
+        stroke="var(--amber)"
+        strokeWidth="0.45"
+      />
+      <circle cx={x} cy={y} r="0.6" fill="var(--amber)" />
+    </g>
   );
 }
 

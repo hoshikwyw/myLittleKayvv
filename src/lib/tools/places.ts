@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { env } from "@/lib/env";
+import { parseHomeLocation } from "@/lib/map/home";
 import { defineTool } from "./types";
 
 /**
@@ -45,11 +46,12 @@ interface PlacesResponse {
 /** Metres. Wide enough to cover a city district, tight enough to stay local. */
 const DEFAULT_RADIUS = 5000;
 
-function parseLatLng(value: string): { latitude: number; longitude: number } | null {
-  const [lat, lng] = value.split(",").map((part) => Number(part.trim()));
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return { latitude: lat, longitude: lng };
-}
+/**
+ * The model may pass `near` as either a place name or a coordinate pair, so
+ * this has to answer "is this a coordinate?" as well as parse one. Shared with
+ * the map so both agree on what counts as a valid home.
+ */
+const parseLatLng = parseHomeLocation;
 
 export const findPlaces = defineTool({
   name: "find_places",

@@ -870,6 +870,30 @@ There is a test asserting that every tool the prompt names is actually
 registered. Nothing else imports those strings, so renaming a tool would
 otherwise leave the model being told to call something that no longer exists.
 
+**Home.** `HOME_LOCATION` was empty, so asking "what's the weather?" with
+nothing selected answered "there is nowhere to check", and the map opened
+blank. It is now set, parsed in one place, and drawn.
+
+One parser, because there were two — the places tool read the variable its own
+way and the weather tool another, which is precisely how two pieces of code end
+up disagreeing about where the user lives. Writing the tests for it found a
+real bug: `Number("")` is 0 rather than NaN, so `"16.84,"` parsed happily as a
+point in the Atlantic. Empty halves and out-of-range latitudes are both now
+rejected — "96.17,16.84" is Yangon written backwards, and taken at face value
+it is a spot in the Arabian Sea whose weather would be reported without
+complaint.
+
+The map opens on home rather than empty. A blank panel saying "click to select"
+teaches nothing; one already showing your own time and weather shows what a
+click is for. It is safe for hydration because the readouts render a
+placeholder and fill in from an effect, so the server and the first client
+paint agree.
+
+Home is also marked permanently, as an amber diamond — a different shape as
+well as a different colour, because the two markers overlap when you click near
+home and colour alone would not separate them for anyone who cannot tell amber
+from cyan.
+
 ## 25. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation

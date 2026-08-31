@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { env } from "@/lib/env";
 import { geocode, type Place } from "@/lib/map/geocode";
+import { homeLocation } from "@/lib/map/home";
 import { placeTime } from "@/lib/map/local-time";
 import { getWeatherProvider } from "@/lib/weather/open-meteo";
 import { defineTool } from "./types";
@@ -16,13 +17,6 @@ import { defineTool } from "./types";
  * questions arrive together often enough — and the time costs nothing, being an
  * offline table lookup rather than a second round trip.
  */
-
-/** Parses the "lat,lng" form used by HOME_LOCATION. */
-function parseHome(): { latitude: number; longitude: number } | null {
-  const [lat, lng] = env.homeLocation.split(",").map((p) => Number(p.trim()));
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return { latitude: lat, longitude: lng };
-}
 
 export const weatherAt = defineTool({
   name: "weather_at",
@@ -92,7 +86,7 @@ export const weatherAt = defineTool({
           `the user's own country. Mention which one you used.`;
       }
     } else {
-      const home = parseHome();
+      const home = homeLocation();
       if (!home) {
         return {
           found: false,
