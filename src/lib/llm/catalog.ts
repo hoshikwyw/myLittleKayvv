@@ -86,8 +86,9 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
  * because its free tier caps context at 8K. Fallback fires part-way through a
  * conversation, which is exactly when the history is already long — so the
  * provider most likely to refuse the request is the one whose daily allowance
- * looks best on paper. Mistral is last because its free tier trains on your
- * data unless you opt out, and this assistant stores facts about people.
+ * looks best on paper. The two that involve training on your data come last:
+ * OpenRouter's free endpoints require it to be switched on, and Mistral's free
+ * tier does it unless you opt out. This assistant stores facts about people.
  */
 export const MODELS: ModelChoice[] = [
   {
@@ -119,11 +120,16 @@ export const MODELS: ModelChoice[] = [
     note: "1M tokens a day, but free context stops at 8K — short threads only.",
   },
   {
-    id: "openrouter/auto",
+    id: "openrouter/free",
     provider: "openrouter",
-    model: "openrouter/auto",
-    label: "OpenRouter Auto",
-    note: "Routes to whatever is free and up. Slower, but rarely exhausted.",
+    // `openrouter/free`, not `openrouter/auto`. Auto routes to whatever is
+    // best including paid models, and bills for them; the free router picks
+    // only from models that cost nothing. Easy to confuse, expensive to.
+    model: "openrouter/free",
+    label: "OpenRouter Free",
+    // Its free endpoints require training and logging to be switched on, which
+    // is the same objection as Mistral — see SETUP-MODELS.md.
+    note: "Routes across free models. Requires allowing training in their settings.",
   },
   {
     id: "mistral/small",

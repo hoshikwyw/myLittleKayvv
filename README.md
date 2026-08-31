@@ -72,6 +72,11 @@ DATABASE_URL=postgresql://postgres:devpass@localhost:55432/kayv
 The app picks its driver from the URL: Neon's HTTP driver for Neon, plain
 node-postgres for anything else. Same schema, same SQL.
 
+**Running out of your free Gemini allowance?** Kayv falls back to other
+providers when one is exhausted, and you can pick between them in the System
+panel. Getting the keys — all free, none need a card — is step-by-step in
+**[SETUP-MODELS.md](SETUP-MODELS.md)**.
+
 Check it landed:
 
 ```bash
