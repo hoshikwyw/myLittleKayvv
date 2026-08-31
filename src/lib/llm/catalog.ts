@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import type { ModelSummary, ProviderId } from "@/types";
 
 /**
  * Which models exist, what they cost you, and which are usable right now.
@@ -10,8 +11,6 @@ import { env } from "@/lib/env";
  *
  * Server-only — it reads env. The browser gets a filtered, key-free summary.
  */
-
-export type ProviderId = "gemini" | "groq" | "cerebras" | "mistral" | "openrouter";
 
 export interface ModelChoice {
   /** Stable id used on the wire and in localStorage: "groq/llama-3.3-70b". */
@@ -179,17 +178,9 @@ export function availableModels(): ModelChoice[] {
  * What the browser is told: enough to draw a picker, and no keys.
  *
  * Unusable models are still listed, marked unavailable, so the picker can show
- * what you would get by adding a key rather than silently hiding it.
+ * what a key would buy rather than silently hiding it. The shape itself lives
+ * in `@/types`, so the picker can name it without importing this file.
  */
-export interface ModelSummary {
-  id: string;
-  label: string;
-  provider: ProviderId;
-  providerLabel: string;
-  note: string;
-  available: boolean;
-}
-
 export function modelSummaries(): ModelSummary[] {
   return MODELS.map((m) => ({
     id: m.id,

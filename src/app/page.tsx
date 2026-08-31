@@ -3,6 +3,7 @@ import { configured, env } from "@/lib/env";
 import { loadMemoryOverview, type MemoryOverview } from "@/lib/memory/overview";
 import { worldPaths } from "@/lib/map/world";
 import { homeLocation } from "@/lib/map/home";
+import { modelSummaries } from "@/lib/llm";
 
 export const dynamic = "force-dynamic";
 
@@ -40,13 +41,14 @@ export default async function Home() {
         calendar: configured.calendar(),
         telegram: configured.telegram(),
       }}
-      model={env.geminiModel}
       timezone={env.timezone}
       today={today}
       // Built here so d3-geo and the topology never reach the browser.
       worldPaths={worldPaths()}
       // Parsed on the server, because HOME_LOCATION is server-only config.
       home={homeLocation()}
+      // Labels and availability only — never a key.
+      models={modelSummaries()}
     />
   );
 }

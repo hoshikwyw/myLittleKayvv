@@ -48,6 +48,31 @@ export interface MapFocus {
   zone: string;
 }
 
+/**
+ * Which vendor a model comes from.
+ *
+ * Lives here rather than in the catalog because the picker needs it, and the
+ * catalog reads `@/lib/env` — a server-only module that must never be pulled
+ * into a client component. A type-only import would be erased and work today,
+ * but it leaves the rule one keystroke from being broken.
+ */
+export type ProviderId =
+  | "gemini"
+  | "groq"
+  | "cerebras"
+  | "mistral"
+  | "openrouter";
+
+/** One model as the picker sees it: enough to draw a row, and no keys. */
+export interface ModelSummary {
+  id: string;
+  label: string;
+  provider: ProviderId;
+  providerLabel: string;
+  note: string;
+  available: boolean;
+}
+
 /** Which model answered a turn, and whether it was the one asked for. */
 export interface AnsweringModel {
   id: string;

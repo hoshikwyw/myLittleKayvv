@@ -982,7 +982,42 @@ The route no longer refuses to start without `GEMINI_API_KEY`, which would have
 turned away a perfectly good setup running on Groq. It now asks whether *any*
 model is configured.
 
-## 27. Open questions
+## 27. Choosing the model
+
+The picker lives in the System panel, backed by localStorage through
+`useSyncExternalStore` — the same shape as the panel layout, for the same
+reasons: reading storage in an effect sets state during a render and cascades,
+and a lazy initialiser renders one thing on the server and another on the
+client.
+
+**It shows two facts, not one.** What you chose, and what actually answered.
+Those diverge the moment a free tier runs out, and a picker showing only your
+choice would quietly become a lie. A fallback is marked in amber and says so.
+
+**Models with no key are listed, not hidden**, greyed out with what each would
+buy. Hiding them would make the fix invisible: you would see one option, hit its
+daily limit, and have nothing on screen to suggest a second exists. That is the
+whole reason the catalog reports unavailable models rather than filtering them.
+
+A saved choice whose key has since been removed falls back to Automatic in the
+picker as well as on the server, so the selection shown is one that could
+actually run.
+
+**One convention repaid immediately.** `ModelSummary` began in the catalog,
+which imports `@/lib/env`. A type-only import into a client component is erased
+and would have worked — but it leaves a server-only module one keystroke from
+the browser bundle, and AGENTS.md forbids exactly that. The type moved to
+`@/types` beside the other wire shapes. Verified afterwards: no key, no base
+URL and no env var name appears anywhere in the served HTML.
+
+The static "model" row is gone. Showing the configured Gemini model beside a
+picker that may have selected something else is worse than showing nothing.
+The subsystem row it sat above is now labelled "gemini (memory)" rather than
+"language model", because embeddings stay on Gemini permanently — that row
+being off means memory cannot be written even while another provider answers
+happily.
+
+## 28. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

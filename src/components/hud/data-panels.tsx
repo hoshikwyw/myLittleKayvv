@@ -5,6 +5,9 @@ import type { MemoryOverview } from "@/lib/memory/overview";
 import { describeYears } from "@/lib/memory/calendar";
 import { ForgetButton } from "@/components/forget-button";
 import { InlineEdit } from "@/components/inline-edit";
+import { ModelPicker } from "./model-picker";
+
+import type { AnsweringModel, ModelSummary } from "@/types";
 import { cn } from "@/lib/utils";
 
 /**
@@ -229,16 +232,25 @@ export interface SubsystemStatus {
 export function SystemBody({
   status,
   counts,
-  model,
   timezone,
+  models,
+  chosenModel,
+  onChooseModel,
+  answeredBy,
 }: {
   status: SubsystemStatus;
   counts: MemoryOverview["counts"];
-  model: string;
   timezone: string;
+  models: ModelSummary[];
+  chosenModel: string | null;
+  onChooseModel: (id: string | null) => void;
+  answeredBy: AnsweringModel | null;
 }) {
   const rows: Array<[string, boolean]> = [
-    ["language model", status.llm],
+    // Named for what it gates rather than for the chat model: embeddings stay
+    // on Gemini permanently, so this being off means memory cannot be written
+    // even when another provider is happily answering.
+    ["gemini (memory)", status.llm],
     ["memory", status.database],
     ["voice", status.voice],
     ["telegram", status.telegram],
@@ -290,17 +302,18 @@ export function SystemBody({
         ))}
       </div>
 
-      <div className="border-border/60 flex flex-col gap-1 border-t pt-2.5">
-        <div className="flex justify-between">
-          <span className="hud-label">model</span>
-          <span className="text-text-muted font-mono text-[10px]">{model}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="hud-label">timezone</span>
-          <span className="text-text-muted font-mono text-[10px]">
-            {timezone}
-          </span>
-        </div>
+      <ModelPicker
+        models={models}
+        chosen={chosenModel}
+        onChoose={onChooseModel}
+        answeredBy={answeredBy}
+      />
+
+      <div className="border-border/60 flex justify-between border-t pt-2.5">
+        <span className="hud-label">timezone</span>
+        <span className="text-text-muted font-mono text-[10px]">
+          {timezone}
+        </span>
       </div>
     </div>
   );

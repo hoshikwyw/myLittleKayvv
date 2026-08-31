@@ -32,8 +32,11 @@ import { WorldMap, formatCoordinates, type MapPoint } from "./world-map";
 import { WeatherReadout } from "./weather-readout";
 import { PlaceReadout } from "./place-readout";
 import { zoneAt } from "@/lib/map/local-time";
+import { useModelChoice } from "@/hooks/use-model-choice";
+
 import type { WorldPaths } from "@/lib/map/world";
 import type { MemoryOverview } from "@/lib/memory/overview";
+import type { ModelSummary } from "@/types";
 import { cn } from "@/lib/utils";
 
 /**
@@ -81,21 +84,21 @@ export function HudWorkspace({
   assistantName,
   overview,
   status,
-  model,
   timezone,
   today,
   worldPaths,
   home,
+  models,
 }: {
   assistantName: string;
   overview: MemoryOverview;
   status: Omit<SubsystemStatus, "voice">;
-  model: string;
   timezone: string;
   today: string;
   worldPaths: WorldPaths;
   /** Null when HOME_LOCATION is unset, which is an ordinary state. */
   home: MapPoint | null;
+  models: ModelSummary[];
 }) {
   // The arrangement lives in localStorage, so the workspace is where you left
   // it — see the hook for why that is not React state.
@@ -110,6 +113,7 @@ export function HudWorkspace({
    * an effect, so the server and the first client paint agree.
    */
   const [place, setPlace] = useState<MapPoint | null>(home);
+  const [chosenModel, chooseModel] = useModelChoice();
 
   const sendRef = useRef<(text: string) => void>(() => {});
   const handleFinalTranscript = useCallback((text: string) => {
@@ -126,6 +130,9 @@ export function HudWorkspace({
      * A getter, so this is whatever is selected when they ask rather than when
      * the hook was built.
      */
+    // Read at send time rather than held, so changing it in the picker
+    // applies to the next turn without the hook keeping a copy.
+    model: () => chosenModel ?? undefined,
     focus: () =>
       place
         ? {
@@ -238,8 +245,11 @@ export function HudWorkspace({
           <SystemBody
             status={{ ...status, voice: voice.capabilities.listen }}
             counts={overview.counts}
-            model={model}
             timezone={timezone}
+            models={models}
+            chosenModel={chosenModel}
+            onChooseModel={chooseModel}
+            answeredBy={assistant.answeredBy}
           />
         );
     }
