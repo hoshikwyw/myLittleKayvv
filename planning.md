@@ -760,7 +760,64 @@ pinger against `/api/cron/reminders` would do it, and the sweep is already
 idempotent so extra runs are harmless. Deliberately not half-built: a reminder
 that arrives at the wrong time is worse than one that arrives as a digest.
 
-## 24. Open questions
+## 24. The world map
+
+Point anywhere on Earth and read the time and the weather there. Built in
+parts, because each one has a different failure mode.
+
+**The map itself.** A wireframe, not tiles. Photographic imagery would fight
+everything else on screen, and tiles mean a billed key for something whose only
+job is answering "where did you point?". `d3-geo` and `world-atlas` generate the
+land, border and graticule paths on the server; the browser receives three
+strings and never sees the libraries — worth checking, since the topology alone
+is larger than the rest of the client bundle.
+
+The projection is equirectangular at `scale(180/π)`, which makes one SVG unit
+exactly one degree. Turning a click into coordinates is then subtraction rather
+than a projection library shipped to the client. The pointer position is read
+from the SVG's own coordinate space via `getBoundingClientRect`, not from the
+element's pixel box, so it stays correct at any panel size — including full
+screen, where the two differ a great deal.
+
+**The clock.** `tz-lookup` is a 72KB offline table from coordinate to IANA
+zone, so the time appears the instant you click, with no network. Daylight is a
+solar-elevation calculation rather than "is it between six and six", because the
+naive version is wrong for a third of the year above the Arctic circle —
+Svalbard in June is lit at local midnight, and McMurdo is dark at noon in
+December. Both are tested. Open ocean answers with `Etc/GMT±n` rather than
+throwing, so a click that misses land does not break the panel.
+
+The clock recomputes each second rather than incrementing, so it survives the
+machine sleeping or the system clock being adjusted underneath it. It renders
+only after a click, which means a live clock never has to agree with anything
+the server rendered — no hydration mismatch to suppress.
+
+**The weather.** Open-Meteo, behind a `WeatherProvider` interface for the same
+reason as `LLMProvider`: free and keyless makes it the right first choice, not
+necessarily the last. It answers for any coordinate on Earth including open
+ocean, which a map you can click anywhere on requires.
+
+Three deliberate choices. Requests go through `/api/weather` rather than
+straight from the component, so one process talks to a free service instead of
+every open tab holding its own cache that dies on reload. Coordinates are
+rounded to one decimal — about 11km — before both caching and requesting, so
+dragging the pointer cannot fire a request per pixel. And a failure returns
+`null` with a 200, not a 502: "no reading for this point" is an ordinary answer
+on a map, and the panel says so in a line rather than turning red.
+
+Each answer is tagged with the coordinates it answers for, and the component
+derives its loading state by comparing that tag against the current point. This
+is the structural fix for a real race — click three places quickly and a slow
+reply for the first can land after a fast reply for the third, showing
+Reykjavik's weather under Yangon's clock. Tagging makes a stale answer
+unrenderable rather than merely unlikely.
+
+WMO weather codes are mapped to words by hand rather than derived, because the
+groupings are not regular: 45 and 48 are both fog, 51/53/55 are drizzle by
+intensity, but 56/57 are freezing drizzle and 66/67 are freezing rain. An
+unknown code reports "unknown conditions" rather than guessing.
+
+## 25. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)
