@@ -29,6 +29,7 @@ import {
   type SubsystemStatus,
 } from "./data-panels";
 import { WorldMap, formatCoordinates, type MapPoint } from "./world-map";
+import { PlaceReadout } from "./place-readout";
 import type { WorldPaths } from "@/lib/map/world";
 import type { MemoryOverview } from "@/lib/memory/overview";
 import { cn } from "@/lib/utils";
@@ -175,12 +176,15 @@ export function HudWorkspace({
         return <PlansBody overview={overview} />;
       case "map":
         return (
-          <WorldMap
-            paths={worldPaths}
-            selected={place}
-            onSelect={setPlace}
-            className="p-2"
-          />
+          <div className="flex flex-col">
+            <WorldMap
+              paths={worldPaths}
+              selected={place}
+              onSelect={setPlace}
+              className="p-2"
+            />
+            {place && <PlaceReadout point={place} homeZone={timezone} />}
+          </div>
         );
       case "system":
         return (
@@ -227,7 +231,7 @@ export function HudWorkspace({
         onClose={() => setPanel(panel.id, null)}
         className={cn(
           panel.id === "chat" && state === "open" && "h-[22rem]",
-          panel.id === "map" && state === "open" && "max-h-[20rem]",
+          panel.id === "map" && state === "open" && "max-h-[26rem]",
           panel.id !== "chat" &&
             panel.id !== "map" &&
             state === "open" &&
