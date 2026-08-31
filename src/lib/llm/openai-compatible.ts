@@ -366,10 +366,15 @@ function extractMessage(body: string): string | null {
     const parsed = JSON.parse(body) as {
       error?: { message?: string } | string;
       message?: string;
+      detail?: string;
     };
     if (typeof parsed.error === "string") return parsed.error;
     if (parsed.error?.message) return parsed.error.message;
     if (parsed.message) return parsed.message;
+    // Mistral's shape. Found by pointing a bad key at all four vendors: the
+    // other three answer in one of the forms above, Mistral in this one, and
+    // without it the raw JSON was being shown to the user as the message.
+    if (parsed.detail) return parsed.detail;
   } catch {
     // Not JSON — the raw body is still better than nothing.
   }

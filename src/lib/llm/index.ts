@@ -1,5 +1,6 @@
 import { GeminiProvider } from "./gemini";
 import { OpenAICompatibleProvider } from "./openai-compatible";
+import { FallbackProvider } from "./fallback";
 import {
   PROVIDERS,
   apiKeyFor,
@@ -74,6 +75,34 @@ export function getChatProvider(id?: string): LLMProvider {
   return build(choice);
 }
 
+/**
+ * Every model that could run, preferred one first.
+ *
+ * The rest follow in catalog order, which is ordered by how much of this
+ * application's work each free tier actually buys — see the comment there for
+ * why that is not the order the vendors' headline numbers suggest.
+ */
+export function buildFallbackChain(
+  preferredId?: string,
+  onSwitch?: (provider: LLMProvider, reason: string) => void,
+): FallbackProvider {
+  const available = availableModels();
+
+  if (available.length === 0) {
+    throw new Error(
+      "No model is configured. Set GEMINI_API_KEY, or another provider's key, in .env.local.",
+    );
+  }
+
+  const preferred = preferredId ? findModel(preferredId) : undefined;
+  const usable =
+    preferred && available.some((m) => m.id === preferred.id)
+      ? [preferred, ...available.filter((m) => m.id !== preferred.id)]
+      : available;
+
+  return new FallbackProvider(usable.map(build), onSwitch);
+}
+
 /** Test seam: pin a provider on one call path. */
 let override: LLMProvider | undefined;
 
@@ -85,7 +114,7 @@ export function getProvider(id?: string): LLMProvider {
   return override ?? getChatProvider(id);
 }
 
-export { GeminiProvider, OpenAICompatibleProvider };
+export { GeminiProvider, OpenAICompatibleProvider, FallbackProvider };
 export { buildSystemPrompt } from "./system-prompt";
 export * from "./catalog";
 export * from "./types";

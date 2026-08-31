@@ -940,7 +940,49 @@ is already long. The provider most likely to refuse is the one whose daily
 allowance looks best on paper. Mistral is last: its free tier trains on your
 data unless you opt out, and this assistant stores facts about people.
 
-## 26. Open questions
+## 26. Falling back on its own
+
+A picker alone would not solve the problem it was asked to solve: you only
+reach for it once you have already been told the day's allowance is gone. So
+the chain switches by itself, and reports that it did.
+
+**Two rules carry the design, and both are about what has already been said.**
+
+*Never switch after output has started.* Once a delta has streamed the user is
+reading a sentence, and half of one model's answer followed by half of
+another's is worse than an honest failure. A tool call counts as having
+started too — the loop has already run it, and repeating the turn elsewhere
+would repeat whatever that tool did. Usage does not count: it arrives after the
+fact and is invisible.
+
+*Once it falls back, it stays fallen back.* This one is Gemini-specific and
+easy to miss. Gemini refuses a follow-up whose function call has lost its
+thought signature, and a call made by Groq has no signature to carry. A second
+iteration of the agent loop that drifted back to Gemini would hand it a tool
+call it considers malformed and lose the turn to a self-inflicted error. So the
+chain's position advances and never retreats, for the life of one request.
+
+A non-retryable failure stops the chain rather than walking it. No other vendor
+can fix a bad key or a malformed request, and trying would spend the 25-second
+budget discovering that four times over.
+
+**Saying who answered.** A `model` event opens every turn and repeats on each
+switch, so an answer from a model you did not choose never arrives unexplained.
+The catalog is looked up by provider and vendor model name, not by reassembling
+an id — `groq/llama-3.3-70b` is deliberately shorter than
+`llama-3.3-70b-versatile`, and the first version of this matched nothing.
+
+**Found by testing against the live endpoints.** Pointing a deliberately bad key
+at all four vendors proved the URLs, headers and auth scheme reach real servers,
+and turned up one real bug: three of them phrase a rejection in an `error` or
+`message` field and Mistral uses `detail`, so its raw JSON was being shown to
+the user as the error message.
+
+The route no longer refuses to start without `GEMINI_API_KEY`, which would have
+turned away a perfectly good setup running on Groq. It now asks whether *any*
+model is configured.
+
+## 27. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

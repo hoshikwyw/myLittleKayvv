@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
+  AnsweringModel,
   AssistantState,
   ChatStreamEvent,
   MapFocus,
@@ -38,6 +39,8 @@ export interface UseAssistant {
   writes: MemoryWriteSummary[];
   error: string | null;
   busy: boolean;
+  /** The model that actually answered, once the server has said. */
+  answeredBy: AnsweringModel | null;
   send: (text: string) => Promise<void>;
   stop: () => void;
   /** Begin a fresh thread. The current one is kept and stays in history. */
@@ -52,6 +55,12 @@ export interface AssistantCallbacks {
   onDelta?: (delta: string) => void;
   /** The stream ended, however it ended. */
   onComplete?: () => void;
+  /**
+   * Which model to prefer, read at send time for the same reason as `focus` —
+   * so changing it in the picker applies to the next turn without the hook
+   * holding a copy of the setting.
+   */
+  model?: () => string | undefined;
   /**
    * Where the user is pointing on the world map, read at send time.
    *
@@ -70,6 +79,12 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
   const [error, setError] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(true);
+  /**
+   * Who answered the last turn. Distinct from the model you picked: the server
+   * falls back when a provider is exhausted, and an answer from a model you
+   * did not choose should not arrive unexplained.
+   */
+  const [answeredBy, setAnsweredBy] = useState<AnsweringModel | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   // Mirrors conversationId so `send` and `clear` can read it without listing it
@@ -237,6 +252,7 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
       abortRef.current = controller;
 
       const focus = callbacksRef.current.focus?.() ?? null;
+      const model = callbacksRef.current.model?.();
 
       try {
         const response = await fetch("/api/chat", {
@@ -250,6 +266,7 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
             // Read now rather than when the hook was built, so it is whatever
             // is selected at the moment of asking.
             ...(focus ? { focus } : {}),
+            ...(model ? { model } : {}),
           }),
           signal: controller.signal,
         });
@@ -318,6 +335,14 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
                 );
                 break;
 
+              case "model":
+                setAnsweredBy({
+                  id: event.id,
+                  label: event.label,
+                  fellBack: event.fellBack,
+                });
+                break;
+
               case "conversation":
                 conversationIdRef.current = event.id;
                 setConversationId(event.id);
@@ -367,6 +392,7 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
     writes,
     error,
     busy,
+    answeredBy,
     send,
     stop,
     startNew,

@@ -155,6 +155,21 @@ export function findModel(id: string): ModelChoice | undefined {
   return MODELS.find((m) => m.id === id);
 }
 
+/**
+ * The catalog entry for a live provider.
+ *
+ * Matched on provider and the vendor's own model name, because that is all a
+ * built provider knows about itself — its catalog id ("groq/llama-3.3-70b") is
+ * deliberately shorter than the vendor's ("llama-3.3-70b-versatile"), so
+ * reassembling one from the other does not work.
+ */
+export function findByModel(
+  provider: string,
+  model: string,
+): ModelChoice | undefined {
+  return MODELS.find((m) => m.provider === provider && m.model === model);
+}
+
 /** Only the models that could actually run right now. */
 export function availableModels(): ModelChoice[] {
   return MODELS.filter((m) => hasKey(m.provider));

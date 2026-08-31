@@ -331,6 +331,27 @@ test("a rate limit is retryable, a bad key is not", async () => {
   assert.match(rejected?.message ?? "", /Invalid API Key/);
 });
 
+test("each vendor's way of phrasing a rejection is unwrapped", async () => {
+  // Checked against the live endpoints with a deliberately bad key: three of
+  // the four answer in an `error` or `message` field, Mistral in `detail`.
+  // Without the last case the user was shown raw JSON as the message.
+  const shapes: Array<[string, string]> = [
+    [JSON.stringify({ error: { message: "Invalid API Key" } }), "Invalid API Key"],
+    [JSON.stringify({ error: "Wrong API Key" }), "Wrong API Key"],
+    [JSON.stringify({ message: "Missing Authentication header" }), "Missing Authentication header"],
+    [JSON.stringify({ detail: "Invalid API Key" }), "Invalid API Key"],
+  ];
+
+  for (const [body, expected] of shapes) {
+    stubError(401, body);
+    const error = (
+      await collect(provider().stream({ turns: [{ role: "user", content: "?" }] }))
+    ).find((e) => e.type === "error");
+
+    assert.equal(error?.message, expected);
+  }
+});
+
 test("a failure announced mid-stream is still an error event", async () => {
   // The provider already sent 200 and then changed its mind, so there is no
   // status code to read — the error arrives as a data frame.

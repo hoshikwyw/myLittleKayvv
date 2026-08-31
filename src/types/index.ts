@@ -24,6 +24,12 @@ export type ChatStreamEvent =
   | { type: "tool_end"; id: string; name: string; ok: boolean }
   | { type: "memory"; writes: MemoryWriteSummary[] }
   | { type: "conversation"; id: string }
+  /**
+   * Which model is answering. Sent when the turn starts, and again if the
+   * chain falls back mid-turn — so an answer from a different model than you
+   * picked never arrives unexplained.
+   */
+  | { type: "model"; id: string; label: string; fellBack: boolean }
   | { type: "error"; message: string; retryable: boolean }
   | { type: "done" };
 
@@ -40,6 +46,14 @@ export interface MapFocus {
   longitude: number;
   /** The IANA zone governing the point, which is a strong hint at the country. */
   zone: string;
+}
+
+/** Which model answered a turn, and whether it was the one asked for. */
+export interface AnsweringModel {
+  id: string;
+  label: string;
+  /** True when the preferred model was exhausted and the chain moved on. */
+  fellBack: boolean;
 }
 
 /** Something the assistant stored this turn, offered back as an undo. */

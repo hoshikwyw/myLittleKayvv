@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { buildSystemPrompt, getProvider } from "@/lib/llm";
+import {
+  availableModels,
+  buildFallbackChain,
+  buildSystemPrompt,
+  findByModel,
+} from "@/lib/llm";
 import {
   buildToolRegistry,
   describeAgentError,
@@ -36,6 +41,12 @@ const RequestSchema = z.object({
    * rather than stored, because it is a property of this moment — the point
    * they had selected when they asked, not a preference to be remembered.
    */
+  /**
+   * Which model to prefer, from the picker. Untrusted: an unknown id, or one
+   * whose key has since been removed, silently falls back to whatever can
+   * actually run rather than failing the turn.
+   */
+  model: z.string().max(64).optional(),
   focus: z
     .object({
       latitude: z.number().min(-90).max(90),
@@ -45,14 +56,31 @@ const RequestSchema = z.object({
     .optional(),
 });
 
+/**
+ * Who answered, named the way the picker names them.
+ *
+ * Falls back to the raw vendor model name rather than "unknown", because a
+ * model reached through OpenRouter's auto-routing is deliberately not in the
+ * catalog and still deserves to be reported honestly.
+ */
+function describeModel(provider: { name: string; model: string }) {
+  const entry = findByModel(provider.name, provider.model);
+  return {
+    id: entry?.id ?? `${provider.name}/${provider.model}`,
+    label: entry?.label ?? provider.model,
+  };
+}
+
 function encodeEvent(event: ChatStreamEvent): Uint8Array {
   return new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`);
 }
 
 export async function POST(request: Request) {
-  if (!configured.llm()) {
+  // Any provider will do now, so checking for Gemini alone would refuse a
+  // perfectly working setup that happens to run on Groq.
+  if (availableModels().length === 0) {
     return Response.json(
-      { error: "GEMINI_API_KEY is not set" },
+      { error: "No model is configured. Set GEMINI_API_KEY or another provider's key." },
       { status: 503 },
     );
   }
@@ -78,7 +106,6 @@ export async function POST(request: Request) {
       : { role: "assistant", content: m.content },
   );
 
-  const provider = getProvider();
   const persist = configured.database();
 
   // Persistence must never be the reason a reply fails. If any of this throws,
@@ -127,6 +154,19 @@ export async function POST(request: Request) {
       // Told to the client first, so a reload can pick the thread back up even
       // if the reply itself fails halfway through.
       if (conversationId) send({ type: "conversation", id: conversationId });
+
+      /**
+       * Built here rather than above so a mid-turn switch can be announced.
+       *
+       * Per request, too: the chain's "stay fallen back" state belongs to this
+       * turn alone, and sharing an instance would leak one caller's switch
+       * into another's conversation.
+       */
+      const provider = buildFallbackChain(parsed.data.model, (next) =>
+        send({ type: "model", ...describeModel(next), fellBack: true }),
+      );
+
+      send({ type: "model", ...describeModel(provider), fellBack: false });
 
       let reply = "";
 
