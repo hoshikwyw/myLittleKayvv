@@ -1,6 +1,7 @@
 import { HudWorkspace } from "@/components/hud/workspace";
 import { configured, env } from "@/lib/env";
 import { loadMemoryOverview, type MemoryOverview } from "@/lib/memory/overview";
+import { worldPaths } from "@/lib/map/world";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,8 @@ export default async function Home() {
       model={env.geminiModel}
       timezone={env.timezone}
       today={today}
+      // Built here so d3-geo and the topology never reach the browser.
+      worldPaths={worldPaths()}
     />
   );
 }

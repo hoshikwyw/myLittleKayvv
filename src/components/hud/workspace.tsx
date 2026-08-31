@@ -6,6 +6,7 @@ import {
   Activity,
   Brain,
   CalendarHeart,
+  Globe2,
   ListChecks,
   MessageSquare,
   Mic,
@@ -27,6 +28,8 @@ import {
   UpcomingBody,
   type SubsystemStatus,
 } from "./data-panels";
+import { WorldMap, formatCoordinates, type MapPoint } from "./world-map";
+import type { WorldPaths } from "@/lib/map/world";
 import type { MemoryOverview } from "@/lib/memory/overview";
 import { cn } from "@/lib/utils";
 
@@ -42,7 +45,7 @@ import { cn } from "@/lib/utils";
  * reading. Every readout, the conversation included, is a panel around it.
  */
 
-type PanelId = "chat" | "upcoming" | "people" | "plans" | "system";
+type PanelId = "chat" | "upcoming" | "people" | "plans" | "system" | "map";
 
 interface PanelMeta {
   id: PanelId;
@@ -58,6 +61,7 @@ const PANELS: PanelMeta[] = [
   { id: "chat", title: "Conversation", icon: MessageSquare, column: "right" },
   { id: "people", title: "Memory", icon: Brain, column: "right" },
   { id: "plans", title: "Plans", icon: ListChecks, column: "left" },
+  { id: "map", title: "World", icon: Globe2, column: "right" },
 ];
 
 /** Open on first load: enough to be useful, not so much it is a wall. */
@@ -67,6 +71,7 @@ const INITIAL: Record<PanelId, PanelState | null> = {
   chat: "open",
   people: "open",
   plans: null,
+  map: null,
 };
 
 export function HudWorkspace({
@@ -76,6 +81,7 @@ export function HudWorkspace({
   model,
   timezone,
   today,
+  worldPaths,
 }: {
   assistantName: string;
   overview: MemoryOverview;
@@ -83,11 +89,13 @@ export function HudWorkspace({
   model: string;
   timezone: string;
   today: string;
+  worldPaths: WorldPaths;
 }) {
   // The arrangement lives in localStorage, so the workspace is where you left
   // it — see the hook for why that is not React state.
   const [panels, setPanel] = usePanelLayout<PanelId>(INITIAL);
   const [input, setInput] = useState("");
+  const [place, setPlace] = useState<MapPoint | null>(null);
 
   const sendRef = useRef<(text: string) => void>(() => {});
   const handleFinalTranscript = useCallback((text: string) => {
@@ -165,6 +173,15 @@ export function HudWorkspace({
         return <PeopleBody overview={overview} />;
       case "plans":
         return <PlansBody overview={overview} />;
+      case "map":
+        return (
+          <WorldMap
+            paths={worldPaths}
+            selected={place}
+            onSelect={setPlace}
+            className="p-2"
+          />
+        );
       case "system":
         return (
           <SystemBody
@@ -185,6 +202,8 @@ export function HudWorkspace({
         return String(overview.counts.people).padStart(2, "0");
       case "plans":
         return String(overview.counts.plans).padStart(2, "0");
+      case "map":
+        return place ? formatCoordinates(place) : undefined;
       default:
         return undefined;
     }
@@ -208,7 +227,11 @@ export function HudWorkspace({
         onClose={() => setPanel(panel.id, null)}
         className={cn(
           panel.id === "chat" && state === "open" && "h-[22rem]",
-          panel.id !== "chat" && state === "open" && "max-h-[16rem]",
+          panel.id === "map" && state === "open" && "max-h-[20rem]",
+          panel.id !== "chat" &&
+            panel.id !== "map" &&
+            state === "open" &&
+            "max-h-[16rem]",
         )}
       >
         {body(panel.id)}
