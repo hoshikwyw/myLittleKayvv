@@ -158,14 +158,32 @@ async function listen() {
   }
 }
 
-const [command, argument] = process.argv.slice(2);
+/**
+ * Wrapped in a function rather than awaited at the top level: tsx compiles
+ * this to CommonJS, where top-level await is a syntax error rather than a
+ * runtime one — the script does not start at all.
+ */
+async function main() {
+  const [command, argument] = process.argv.slice(2);
 
-if (command === "id") await showChatId();
-else if (command === "register") {
-  if (!argument) {
-    console.error("Usage: npm run telegram -- register https://your-app.vercel.app");
-    process.exit(1);
+  if (command === "id") return showChatId();
+
+  if (command === "register") {
+    if (!argument) {
+      console.error(
+        "Usage: npm run telegram -- register https://your-app.vercel.app",
+      );
+      process.exit(1);
+    }
+    return register(argument);
   }
-  await register(argument);
-} else if (command === "unregister") await unregister();
-else await listen();
+
+  if (command === "unregister") return unregister();
+
+  return listen();
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+});
