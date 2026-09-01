@@ -32,6 +32,9 @@ import { WorldMap, formatCoordinates, type MapPoint } from "./world-map";
 import { WeatherReadout } from "./weather-readout";
 import { PlaceReadout } from "./place-readout";
 import { zoneAt } from "@/lib/map/local-time";
+import { distanceKm } from "@/lib/map/distance";
+import { viewFor, stepForDistance, WORLD_STEP } from "./map-zoom";
+import { useStreets } from "@/hooks/use-streets";
 import { useModelChoice } from "@/hooks/use-model-choice";
 
 import type { WorldPaths } from "@/lib/map/world";
@@ -128,6 +131,10 @@ export function HudWorkspace({
     home,
   );
   const [chosenModel, chooseModel] = useModelChoice();
+  const [zoom, setZoom] = useState(WORLD_STEP);
+
+  const view = viewFor(zoom, place);
+  const { streets, loading: loadingStreets } = useStreets(place, zoom);
 
   const sendRef = useRef<(text: string) => void>(() => {});
   const handleFinalTranscript = useCallback((text: string) => {
@@ -150,6 +157,27 @@ export function HudWorkspace({
         longitude: next.longitude,
         label: next.label,
       });
+
+      /*
+       * How far away decides how close to look.
+       *
+       * A pharmacy 400m away and a city 8,000km away arrive the same way, and
+       * one scale cannot show both — at world zoom the pharmacy is invisible,
+       * at street zoom the city is a blank field of ocean.
+       */
+      setZoom(
+        stepForDistance(
+          home
+            ? distanceKm(
+                home.latitude,
+                home.longitude,
+                next.latitude,
+                next.longitude,
+              )
+            : null,
+        ),
+      );
+
       setPanel("map", "open");
     },
     /**
@@ -263,6 +291,11 @@ export function HudWorkspace({
           <div className="flex h-full flex-col">
             <WorldMap
               paths={worldPaths}
+              streets={streets}
+              loadingStreets={loadingStreets}
+              view={view}
+              step={zoom}
+              onZoom={setZoom}
               selected={place}
               home={home}
               onSelect={(point) => setPlace(point)}

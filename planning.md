@@ -1175,7 +1175,57 @@ that the map exists, that looking a place up marks it, and that a link or a
 remembered location is not an answer. Worth noting for its own sake: a
 capability the model cannot see is not a capability.
 
-## 31. Open questions
+## 31. Zooming in
+
+A world map cannot show a pharmacy 473 metres away, and no label or distance
+readout changes that — you want to see *where it is*. So the map zooms, and
+what it draws changes as it does.
+
+**Why zooming alone would not have worked.** The world outline has nothing
+below country level: zoom to a street and you get a blank field inside
+Myanmar's border. The detail has to come from somewhere, and the two ordinary
+answers are both wrong here — raster tiles would paste a photograph into the
+middle of a wireframe interface, and the good vector tile services want a key
+and a card.
+
+The third answer was already in the project. Overpass, which the place search
+uses, returns street geometry as coordinates. Fetched on the server, projected
+into the same one-unit-per-degree space as the world outline, and handed to the
+browser as two path strings — so the picture stays a drawing all the way down,
+and still costs nothing.
+
+**Rungs, not a slider.** Each step answers a different question and they are
+not one picture magnified: above 40km the outline is all there is, below it the
+streets are. A continuous zoom would spend half its travel showing a blank
+country interior. How far the marked place is from home picks the rung — a
+pharmacy round the corner and a city on another continent arrive by the same
+path, and one scale cannot show both.
+
+**Three things this broke, each caught by trying it.**
+
+`pointInBox` rounded coordinates to two decimals. That was right when the map
+only ever showed the whole world — a hundredth of a degree is 1.1km, finer than
+anyone can click at that scale — and became a bug the moment a view could be
+0.09° tall, quantising every click into nine possible answers. Precision now
+follows the zoom.
+
+Every stroke width was a constant in map units. At a one-kilometre span a
+stroke of 0.22 units is a quarter of the picture, so line weights and marker
+sizes are all fractions of the view now.
+
+And the crosshair vanished into the street grid, being the same colour as it.
+It is drawn with a dark casing beneath, the way a map label is drawn over a
+busy background.
+
+**The cost is honesty about latency.** A cold Overpass query for one
+neighbourhood takes 9 to 17 seconds. Zooming from the world to a street crosses
+four rungs, and the first version started a request at each — three slow calls
+for views nobody stopped to look at, queued ahead of the one they wanted. The
+fetch waits 450ms for the zoom to settle, and the map says "drawing streets…"
+while it works, because an empty picture with no explanation reads as broken.
+Answers are cached for a day, server side, so the second visit is instant.
+
+## 32. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

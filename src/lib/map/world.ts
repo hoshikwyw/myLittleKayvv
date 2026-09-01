@@ -107,21 +107,108 @@ export function pointInBox(
   boxHeight: number,
   offsetX: number,
   offsetY: number,
+  /** What the map is currently showing. Defaults to the whole world. */
+  view: MapView = WORLD_VIEW,
 ): { latitude: number; longitude: number } | null {
   if (boxWidth <= 0 || boxHeight <= 0) return null;
 
-  const scale = Math.min(boxWidth / MAP_WIDTH, boxHeight / MAP_HEIGHT);
+  const scale = Math.min(boxWidth / view.width, boxHeight / view.height);
   if (scale <= 0) return null;
 
-  const x = (offsetX - (boxWidth - MAP_WIDTH * scale) / 2) / scale;
-  const y = (offsetY - (boxHeight - MAP_HEIGHT * scale) / 2) / scale;
+  // Two corrections, not one: the letterbox the browser adds to preserve the
+  // aspect ratio, and the window the map has been zoomed to. Applying only the
+  // first was correct while the view was always the whole world, and silently
+  // wrong the moment it was not.
+  const x = view.x + (offsetX - (boxWidth - view.width * scale) / 2) / scale;
+  const y = view.y + (offsetY - (boxHeight - view.height * scale) / 2) / scale;
 
-  if (x < 0 || x > MAP_WIDTH || y < 0 || y > MAP_HEIGHT) return null;
+  if (
+    x < view.x ||
+    x > view.x + view.width ||
+    y < view.y ||
+    y > view.y + view.height
+  ) {
+    return null;
+  }
 
   const { latitude, longitude } = unproject(x, y);
+  const places = decimalsFor(view);
 
   return {
-    latitude: Number(latitude.toFixed(2)),
-    longitude: Number(longitude.toFixed(2)),
+    latitude: Number(latitude.toFixed(places)),
+    longitude: Number(longitude.toFixed(places)),
   };
+}
+
+/**
+ * How many decimal places a coordinate deserves at this zoom.
+ *
+ * Two was right while the map only ever showed the whole world — a hundredth
+ * of a degree is about 1.1km, finer than anyone can click at that scale. At a
+ * ten-kilometre view the whole window is 0.09° tall, so two places quantise
+ * every click into nine possible answers and the marker jumps in steps.
+ *
+ * Bounded at both ends: never coarser than the world view needs, never finer
+ * than a metre, which is past the accuracy of anything being drawn.
+ */
+export function decimalsFor(view: MapView): number {
+  const zoom = MAP_HEIGHT / Math.max(view.height, 1e-9);
+  return Math.min(Math.max(2 + Math.round(Math.log10(zoom)), 2), 6);
+}
+
+/**
+ * The window the map is currently showing, in map units.
+ *
+ * The whole world is `{ x: 0, y: 0, width: 360, height: 180 }`. Zooming in
+ * narrows it around a point, which is the same thing an SVG `viewBox` means —
+ * so this *is* the viewBox, and everything else follows from it.
+ */
+export interface MapView {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export const WORLD_VIEW: MapView = {
+  x: 0,
+  y: 0,
+  width: MAP_WIDTH,
+  height: MAP_HEIGHT,
+};
+
+/**
+ * A window of `spanKm` across, centred on a point.
+ *
+ * Longitude is widened by 1/cos(latitude) because a degree of longitude is
+ * shorter than a degree of latitude everywhere except the equator. Without it
+ * a street grid comes out stretched sideways — barely at Yangon, where the
+ * factor is 1.04, and more than twice over at Reykjavik.
+ */
+export function viewAround(
+  latitude: number,
+  longitude: number,
+  spanKm: number,
+): MapView {
+  const KM_PER_DEGREE = 111.32;
+
+  const height = spanKm / KM_PER_DEGREE;
+
+  // Guarded: cos goes to zero at the poles and the width would go to infinity.
+  const shrink = Math.max(Math.cos((latitude * Math.PI) / 180), 0.05);
+  const width = height / shrink;
+
+  const { x, y } = project(latitude, longitude);
+
+  return {
+    x: x - width / 2,
+    y: y - height / 2,
+    width,
+    height,
+  };
+}
+
+/** How wide the view is, in kilometres, at its centre. */
+export function viewSpanKm(view: MapView): number {
+  return view.height * 111.32;
 }
