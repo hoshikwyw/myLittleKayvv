@@ -129,6 +129,16 @@ export function HudWorkspace({
     onDelta: voice.pushSpeech,
     onComplete: voice.flushSpeech,
     /**
+     * Asked about somewhere, so show it.
+     *
+     * The panel is opened as well as moved: a marker dropped on a map that is
+     * closed or minimised is a thing that happened where nobody was looking.
+     */
+    onFocus: (next) => {
+      setPlace({ latitude: next.latitude, longitude: next.longitude });
+      setPanel("map", "open");
+    },
+    /**
      * The selected point travels with every turn, typed or spoken, so "what
      * about here?" resolves without the user having to read coordinates out.
      * A getter, so this is whatever is selected when they ask rather than when

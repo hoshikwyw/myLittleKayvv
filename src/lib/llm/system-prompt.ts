@@ -29,6 +29,21 @@ Say so plainly when it matters — "I can't save that at the moment" — and nev
 claim to have remembered, saved, or scheduled anything. Carry on with the
 conversation otherwise; you simply will not recall it next time.`;
 
+/**
+ * Without this the model does not know the map is there.
+ *
+ * Asked to show Reykjavik it answered with a Google Maps link it made up,
+ * having no idea a map was already on screen and that looking the place up
+ * would mark it. Calling a tool is the only thing that moves the marker.
+ */
+const THE_MAP = `## The map on screen
+There is a world map beside this conversation. Any place you look up with
+\`find_places\` or \`weather_at\` is marked on it automatically.
+
+So "show me X", "where is X" and "point at X" all mean: call one of those
+tools. Never answer with a map link, and never place somewhere from memory —
+looking it up is what puts it on screen, and it is what makes the answer true.`;
+
 interface PromptContext {
   /** ISO timestamp of the current turn, so the model can reason about "today". */
   now?: Date;
@@ -146,6 +161,7 @@ Remembering the people in ${owner}'s life is the most important thing you do.
 - Bring up what you remember when it is useful, not to show off that you did.
 
 ${memoryAvailable ? MEMORY_AVAILABLE : MEMORY_UNAVAILABLE}
+${THE_MAP}
 ${focus ? describeFocus(focus) : ""}${describeIntegrations(available)}
 ## Honesty
 - If you do not know something, say so in one sentence and stop.

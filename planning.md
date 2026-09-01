@@ -1126,7 +1126,39 @@ Nominatim's usage policy asks for a User-Agent identifying the application and
 no more than one request a second. Both are honoured; it is a free service on
 donated hardware.
 
-## 30. Open questions
+## 30. Show me on the map
+
+Ask where something is and the marker goes there, the clock changes to its
+timezone, and the weather panel updates. It costs nothing: the map is drawn
+from data in the repo, so there is no map vendor in this at all.
+
+**Deliberately not a tool.** A `show_on_map` tool would cost another schema in
+every request — roughly 150 tokens against a fixed overhead already at 2,900 —
+plus a second round trip for the model to decide to call it. The coordinates
+are already in the result of `weather_at` and `find_places`, so the loop reads
+them from there and emits them on `tool_end`. No extra tokens, no extra
+latency, and the map moves while the answer is still being written.
+
+Each tool is read by name rather than by hunting the result for anything
+latitude-shaped. Guessing would point the map at whatever number happened to
+look like a coordinate — `calculate` returning 96.17 is a number, not a
+longitude — and would break silently the day a tool's shape changed. An
+unhandled tool simply does not move the map.
+
+The browser is handed the focus through a callback rather than a piece of
+state, so the workspace moves the map directly instead of watching a value in
+an effect. That is the same pattern the panel layout and the weather readout
+arrived at, for the same reason: reacting to state in an effect is what
+`set-state-in-effect` exists to catch.
+
+**The plumbing was not enough.** With all of it working, "show me Reykjavik on
+the map" answered with a Google Maps link the model invented, because nothing
+had told it a map was on screen. Four sentences in the system prompt fixed it —
+that the map exists, that looking a place up marks it, and that a link or a
+remembered location is not an answer. Worth noting for its own sake: a
+capability the model cannot see is not a capability.
+
+## 31. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

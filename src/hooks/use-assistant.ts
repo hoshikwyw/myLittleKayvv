@@ -56,6 +56,14 @@ export interface AssistantCallbacks {
   /** The stream ended, however it ended. */
   onComplete?: () => void;
   /**
+   * A tool answered about somewhere on Earth.
+   *
+   * A callback rather than state, so the workspace moves the map directly
+   * instead of watching a value in an effect — which is the pattern that put
+   * `set-state-in-effect` errors in the panel layout and the weather readout.
+   */
+  onFocus?: (focus: MapFocus & { label: string }) => void;
+  /**
    * Which model to prefer, read at send time for the same reason as `focus` —
    * so changing it in the picker applies to the next turn without the hook
    * holding a copy of the setting.
@@ -333,6 +341,9 @@ export function useAssistant(callbacks: AssistantCallbacks = {}): UseAssistant {
                       : t,
                   ),
                 );
+                // Announced as it happens, so the map moves while the answer
+                // is still being written rather than after it finishes.
+                if (event.focus) callbacksRef.current.onFocus?.(event.focus);
                 break;
 
               case "model":

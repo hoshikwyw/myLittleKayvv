@@ -21,7 +21,18 @@ export interface Message {
 export type ChatStreamEvent =
   | { type: "text"; delta: string }
   | { type: "tool_start"; id: string; name: string }
-  | { type: "tool_end"; id: string; name: string; ok: boolean }
+  | {
+      type: "tool_end";
+      id: string;
+      name: string;
+      ok: boolean;
+      /**
+       * Where the result was about, when it was about anywhere. The map moves
+       * to it, so asking "where is Shwedagon Pagoda" shows the pagoda rather
+       * than only describing it.
+       */
+      focus?: MapFocus & { label: string };
+    }
   | { type: "memory"; writes: MemoryWriteSummary[] }
   | { type: "conversation"; id: string }
   /**

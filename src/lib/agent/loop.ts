@@ -1,3 +1,4 @@
+import { focusFromToolResult, type MapFocusHint } from "./focus";
 import type {
   ConversationTurn,
   LLMProvider,
@@ -19,7 +20,19 @@ import type { ToolRegistry } from "@/lib/tools/registry";
 export type AgentEvent =
   | { type: "text"; delta: string }
   | { type: "tool_start"; id: string; name: string; args: Record<string, unknown> }
-  | { type: "tool_end"; id: string; name: string; ok: boolean; summary: string }
+  | {
+      type: "tool_end";
+      id: string;
+      name: string;
+      ok: boolean;
+      summary: string;
+      /**
+       * Where on Earth this result was about, when it was about anywhere.
+       * Read from the result the tool already returned, so pointing the map at
+       * it costs neither a tool schema nor a second round trip.
+       */
+      focus?: MapFocusHint;
+    }
   | {
       type: "error";
       message: string;
@@ -153,8 +166,15 @@ export async function* runAgent(
       }),
     );
 
-    for (const { id, call, ok, summary } of executed) {
-      yield { type: "tool_end", id, name: call.name, ok, summary };
+    for (const { id, call, ok, summary, result } of executed) {
+      yield {
+        type: "tool_end",
+        id,
+        name: call.name,
+        ok,
+        summary,
+        ...(ok ? { focus: focusFromToolResult(call.name, result) ?? undefined } : {}),
+      };
     }
 
     const results: ToolCallResult[] = executed.map(({ call, result }) => ({

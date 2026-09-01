@@ -13,6 +13,7 @@ import {
 } from "@/lib/agent";
 import type { ConversationTurn } from "@/lib/llm";
 import { configured } from "@/lib/env";
+import { zoneAt } from "@/lib/map/local-time";
 import type { ChatStreamEvent } from "@/types";
 import {
   appendMessage,
@@ -201,6 +202,19 @@ export async function POST(request: Request) {
                 id: event.id,
                 name: event.name,
                 ok: event.ok,
+                ...(event.focus
+                  ? {
+                      focus: {
+                        latitude: event.focus.latitude,
+                        longitude: event.focus.longitude,
+                        // The browser's own lookup, so the panel agrees with
+                        // the clock beside it rather than carrying a second
+                        // opinion about which zone governs the point.
+                        zone: zoneAt(event.focus.latitude, event.focus.longitude),
+                        label: event.focus.label,
+                      },
+                    }
+                  : {}),
               });
               break;
             case "error":
