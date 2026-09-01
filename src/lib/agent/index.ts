@@ -19,13 +19,16 @@ import { configured } from "@/lib/env";
  * the model a tool that always fails teaches it to stop trying.
  */
 export function buildToolRegistry(log: MemoryWriteLog): ToolRegistry {
-  // Weather and place search join the builtins rather than the credentialed
-  // tools: Open-Meteo and OpenStreetMap are both keyless, so neither can
-  // become the tool that always fails.
+  // Weather, place search and lookup join the builtins rather than the
+  // credentialed tools. Open-Meteo, OpenStreetMap and Wikipedia are all
+  // keyless, so none of them can become the tool that always fails — the
+  // search one says when it cannot answer something current, rather than
+  // being absent.
   const registry = new ToolRegistry().register(
     ...builtinTools,
     weatherAt,
     findPlaces,
+    searchWeb,
   );
 
   if (configured.database()) {
@@ -34,7 +37,6 @@ export function buildToolRegistry(log: MemoryWriteLog): ToolRegistry {
 
   // Each external tool appears only once its credentials exist. Offering a tool
   // that always fails teaches the model to stop reaching for it.
-  if (configured.search()) registry.register(searchWeb);
   if (configured.calendar()) registry.register(readCalendar);
 
   return registry;

@@ -176,7 +176,6 @@ export async function handleMessage({
     system: buildSystemPrompt({
       memoryAvailable: persist,
       available: {
-        maps: configured.maps(),
         search: configured.search(),
         calendar: configured.calendar(),
       },

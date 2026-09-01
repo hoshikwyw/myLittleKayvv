@@ -1,74 +1,66 @@
 import { z } from "zod";
-import { env } from "@/lib/env";
+import { searchTheWeb } from "@/lib/search";
 import { defineTool } from "./types";
 
 /**
- * Google Custom Search JSON API.
+ * Looking something up.
  *
- * Free tier is 100 queries a day, which is generous for one person and
- * unforgiving if the model searches reflexively — hence the description below
- * telling it when *not* to reach for this.
+ * Wikipedia answers encyclopedic questions for nothing and needs no key.
+ * Tavily answers everything that changed, on a free monthly allowance and no
+ * card. Which one runs is decided by the question — see `lib/search/index.ts`.
+ *
+ * It replaced Google's Custom Search JSON API, which is closed to new
+ * customers and shuts down on 1 January 2027, and was therefore a tool nobody
+ * starting this project today could ever have switched on.
+ *
+ * Registered unconditionally, like `weather_at` and `find_places`: the
+ * encyclopedic half needs no key, so it can never be the tool that always
+ * fails. It simply says when it cannot answer something current.
  */
-
-const ENDPOINT = "https://www.googleapis.com/customsearch/v1";
-
-interface SearchResponse {
-  items?: Array<{
-    title?: string;
-    link?: string;
-    snippet?: string;
-    displayLink?: string;
-  }>;
-  searchInformation?: { totalResults?: string };
-  error?: { message?: string };
-}
 
 export const searchWeb = defineTool({
   name: "search_web",
   description:
-    "Search the web for current information — news, facts that change, " +
-    "anything after your training data. Do not use it for general knowledge " +
-    "you already have, for arithmetic, or for anything about the user's own " +
-    "life, which lives in memory. Results are snippets, not full pages: say " +
-    "what the sources say rather than presenting it as your own certainty.",
+    "Look something up — facts, definitions, history, and current news. Do " +
+    "not use it for arithmetic, or for anything about the user's own life, " +
+    "which lives in memory. Results are extracts, not full pages: say what " +
+    "the sources say, name them, and never present a result as your own " +
+    "certainty. If a result is marked as possibly out of date, say so.",
   schema: z.object({
-    query: z.string().min(2).max(200).describe("The search query"),
-    limit: z.number().int().min(1).max(10).default(5),
+    query: z.string().min(2).max(200).describe("What to look up"),
+    limit: z.number().int().min(1).max(10).default(4),
   }),
   handler: async ({ query, limit }, { signal }) => {
-    const url = new URL(ENDPOINT);
-    url.searchParams.set("key", env.googleSearchApiKey);
-    url.searchParams.set("cx", env.googleSearchEngineId);
-    url.searchParams.set("q", query);
-    url.searchParams.set("num", String(limit));
+    const { results, source, staleWarning } = await searchTheWeb(
+      query,
+      limit,
+      signal,
+    );
 
-    const response = await fetch(url, { signal });
-    const data = (await response.json().catch(() => null)) as SearchResponse | null;
-
-    if (!response.ok) {
-      // The daily quota is the failure people actually hit, so name it.
-      if (response.status === 429) {
-        throw new Error(
-          "The daily web search quota is used up. It resets tomorrow.",
-        );
-      }
-      throw new Error(
-        data?.error?.message ?? `Web search failed (${response.status})`,
-      );
-    }
-
-    const items = data?.items ?? [];
-    if (items.length === 0) {
-      return { found: 0, results: [], note: `Nothing found for "${query}".` };
+    if (results.length === 0) {
+      return {
+        found: 0,
+        results: [],
+        note:
+          staleWarning ??
+          `Nothing found for "${query}". Say that you could not find it ` +
+            `rather than answering from memory.`,
+      };
     }
 
     return {
-      found: items.length,
-      results: items.map((item) => ({
-        title: item.title,
-        source: item.displayLink,
-        snippet: item.snippet,
-        url: item.link,
+      found: results.length,
+      searchedWith: source,
+      // Present only when there is something the model must tell the user, so
+      // its absence is meaningful rather than noise on every call.
+      warning: staleWarning,
+      results: results.map((result) => ({
+        title: result.title,
+        source: result.source,
+        // Omitted for a summary, which has no single page behind it — a made
+        // up link is worse than no link.
+        url: result.url || undefined,
+        extract: result.snippet,
       })),
     };
   },

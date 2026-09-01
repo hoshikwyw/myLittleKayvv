@@ -87,11 +87,12 @@ export const env = {
   get googleMapsApiKey() {
     return required("GOOGLE_MAPS_API_KEY");
   },
-  get googleSearchApiKey() {
-    return required("GOOGLE_SEARCH_API_KEY");
-  },
-  get googleSearchEngineId() {
-    return required("GOOGLE_SEARCH_ENGINE_ID");
+  /**
+   * Live web search. Optional: without it, lookups still work through
+   * Wikipedia and simply say when a question needs something more current.
+   */
+  get tavilyApiKey() {
+    return optional("TAVILY_API_KEY");
   },
   /** "lat,lng" — what "near me" resolves to when nothing else is given. */
   get homeLocation() {
@@ -136,8 +137,12 @@ export const configured = {
    * it is always on rather than find a hardcoded `true` in the UI.
    */
   maps: () => true,
-  search: () =>
-    Boolean(process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID),
+  /**
+   * Whether *current* information can be looked up. Encyclopedic lookup works
+   * with no key at all, so this is not "is search available" — it is "can it
+   * answer what happened this week", which is the part a key buys.
+   */
+  search: () => Boolean(process.env.TAVILY_API_KEY),
   calendar: () =>
     Boolean(
       process.env.GOOGLE_OAUTH_CLIENT_ID &&

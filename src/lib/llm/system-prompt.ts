@@ -61,7 +61,6 @@ interface PromptContext {
   focus?: MapFocus | null;
   /** Which external integrations have credentials this turn. */
   available?: {
-    maps?: boolean;
     search?: boolean;
     calendar?: boolean;
   };
@@ -73,10 +72,24 @@ interface PromptContext {
  * Written as instructions rather than adjectives. "Be warm" produces nothing;
  * "answer the question before adding context" produces behaviour you can see.
  */
+/**
+ * What is genuinely unavailable, stated precisely.
+ *
+ * Precision matters here more than it looks. Place search and encyclopedic
+ * lookup both need no key and always work, so listing "search the web" as
+ * impossible would make the model refuse questions it can answer perfectly
+ * well. What a missing key costs is the *current* half — news, prices, what is
+ * open now — and that is what this says.
+ */
 function describeIntegrations(available: NonNullable<PromptContext["available"]>) {
   const missing: string[] = [];
-  if (!available.maps) missing.push("look up places on a map");
-  if (!available.search) missing.push("search the web");
+
+  if (!available.search) {
+    missing.push(
+      "look up anything that changed recently — news, prices, today's events. " +
+        "You can still look up facts, definitions and history",
+    );
+  }
   if (!available.calendar) missing.push("read their calendar");
 
   if (missing.length === 0) return "";

@@ -183,7 +183,40 @@ MISTRAL_API_KEY=...
 
 ---
 
-## 5. Restart and check
+## 5. Tavily — live web search (optional)
+
+Not a chat model, but the same shape of decision, so it lives here too.
+
+Kayv answers questions of fact, definition and history through **Wikipedia**,
+which needs no key and always works. What it cannot do is anything that
+*changed* — news, prices, what is open now. Without a key it says so plainly
+rather than handing you an old encyclopedia article as though it were today's
+news.
+
+The obvious options are gone. Google's Custom Search JSON API is **closed to
+new customers** and shuts down on 1 January 2027, so the original
+implementation in this project was a tool nobody could ever have switched on.
+Brave dropped its free tier in early 2026 and now requires a payment method.
+
+**Tavily** is the remaining no-card option, and is built for exactly this — it
+returns extracted page content rather than two-line snippets.
+
+1. Go to **[tavily.com](https://tavily.com)** and click **Get API Key**. Email,
+   Google or GitHub.
+2. The free "Researcher" plan is selected by default. **No credit card.**
+3. Copy the key from the dashboard.
+
+```bash
+TAVILY_API_KEY=tvly-...
+```
+
+1,000 searches a month, resetting on the first. A basic search costs one
+credit; Kayv uses basic, and only spends one when the question actually needs
+current information — "who was Aung San" goes to Wikipedia for free.
+
+---
+
+## 6. Restart and check
 
 `.env.local` is read at startup, so the dev server has to be restarted:
 

@@ -180,7 +180,6 @@ export async function POST(request: Request) {
             memoryAvailable: configured.database(),
             focus: parsed.data.focus,
             available: {
-              maps: configured.maps(),
               search: configured.search(),
               calendar: configured.calendar(),
             },

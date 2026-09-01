@@ -1225,7 +1225,45 @@ fetch waits 450ms for the zoom to settle, and the map says "drawing streets…"
 while it works, because an empty picture with no explanation reads as broken.
 Answers are cached for a day, server side, so the second visit is instant.
 
-## 32. Open questions
+## 32. Looking things up
+
+The `search_web` tool ran on Google's Custom Search JSON API. That API is
+**closed to new customers** and shuts down on 1 January 2027 — so it was not a
+feature waiting for a key, it was a feature nobody starting this project today
+could ever have switched on. Brave, the obvious replacement, dropped its free
+tier in early 2026 and now requires a payment method.
+
+**Two sources, because they answer different questions.** Wikipedia handles
+facts, definitions and history for nothing, with no key. Tavily handles
+everything that changed, on 1,000 free searches a month and no card. Which one
+runs is decided by the question, and the free one goes first.
+
+**The failure this is built around** is not "no search available". It is that
+an encyclopedia answers confidently and wrongly. Asked for the news in Myanmar,
+Wikipedia returns a perfectly good article about Myanmar, and a model handed
+that will summarise the article as though it were the news. So a question that
+wants current information never reaches Wikipedia while a live search exists —
+and when one does not, the background is still offered but carries a warning
+the model is told to repeat. Verified: it answered *"I don't have current news
+updates for Myanmar right now"* rather than reporting last year's earthquake.
+
+**DuckDuckGo was going to sit beside Wikipedia and was dropped after testing
+it.** Its Instant Answer API returned nothing at all for "pgvector" and nothing
+for any current-events query, while Wikipedia answered the encyclopedic ones
+better. Two thin sources are not better than one good one.
+
+Wikipedia's API returns pages keyed by page id, which is not the order it
+ranked them in — searching "Aung San Suu Kyi" put her brother first until the
+results were sorted on the `index` the search actually assigned.
+
+**Two labels corrected on the way.** The status row said "web search", which
+read as the whole capability; lookup needs no key and always works, so it says
+"live search" now — the half a key buys. And the system prompt listed "search
+the web" among the things the assistant cannot do, which would have made it
+refuse questions it can answer perfectly well. It now names the current half
+specifically, and says the rest still works.
+
+## 33. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

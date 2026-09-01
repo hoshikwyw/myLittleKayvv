@@ -260,7 +260,10 @@ export function SystemBody({
     // after the thing it gates stops the panel reporting a working feature
     // as offline.
     ["place search", status.maps],
-    ["web search", status.search],
+    // "web search" read as the whole capability; encyclopedic lookup needs no
+    // key and always works. This row is the live half — news, prices, anything
+    // that changed — which is the part a Tavily key buys.
+    ["live search", status.search],
     ["calendar", status.calendar],
   ];
 
