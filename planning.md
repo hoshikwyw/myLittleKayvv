@@ -1145,6 +1145,23 @@ look like a coordinate — `calculate` returning 96.17 is a number, not a
 longitude — and would break silently the day a tool's shape changed. An
 unhandled tool simply does not move the map.
 
+**Then it looked broken, and was not.** Asked for the nearest pharmacy, the
+assistant said it had put it on the map and the map appeared unchanged. It had
+moved: home is 16.8409,96.1735 and the pharmacy 16.84445,96.17105. That is 473
+metres — on a map where one SVG unit is one degree, a move of eight thousandths
+of a pixel, and both round to `16.84°N 96.17°E` in the header.
+
+Nothing was wrong with the code. A world map cannot show a pharmacy down the
+road, and no amount of correctness makes it able to. What was missing was
+anything on screen that could tell you it had worked, so the panel now shows
+the place's *name* in its title bar and the readout says how far it is — "473 m
+from home". The name is what changes when the coordinates cannot.
+
+The distance arithmetic moved to its own file on the way. Both the browser and
+the server need it, and importing it from the OSM provider would have pulled
+Overpass, Nominatim and the category table into the client bundle for one
+piece of trigonometry.
+
 The browser is handed the focus through a callback rather than a piece of
 state, so the workspace moves the map directly instead of watching a value in
 an effect. That is the same pattern the panel layout and the weather readout

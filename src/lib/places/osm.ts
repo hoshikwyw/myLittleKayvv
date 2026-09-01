@@ -1,4 +1,5 @@
 import { categoryFor } from "./categories";
+import { distanceKm } from "@/lib/map/distance";
 import type { FoundPlace, PlaceSearch, PlacesProvider } from "./types";
 
 /**
@@ -55,26 +56,6 @@ interface NominatimResult {
   category?: string;
   type?: string;
   extratags?: Record<string, string>;
-}
-
-/** Great-circle distance, for ordering results by how far away they are. */
-export function distanceKm(
-  fromLat: number,
-  fromLng: number,
-  toLat: number,
-  toLng: number,
-): number {
-  const R = 6371;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-
-  const dLat = toRad(toLat - fromLat);
-  const dLng = toRad(toLng - fromLng);
-
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(fromLat)) * Math.cos(toRad(toLat)) * Math.sin(dLng / 2) ** 2;
-
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 /**
@@ -312,3 +293,5 @@ export function getPlacesProvider(): PlacesProvider {
   provider ??= new OpenStreetMapProvider();
   return provider;
 }
+
+export { distanceKm };

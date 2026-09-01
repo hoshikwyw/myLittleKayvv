@@ -116,7 +116,17 @@ export function HudWorkspace({
    * hydration because the readouts render a placeholder first and fill in from
    * an effect, so the server and the first client paint agree.
    */
-  const [place, setPlace] = useState<MapPoint | null>(home);
+  /**
+   * The selected point, and what it is called when something named it.
+   *
+   * The name matters more than it looks. A pharmacy 470m away moves the
+   * marker by eight thousandths of a pixel and rounds to the same coordinates
+   * as home, so without a label the panel looks completely unchanged and the
+   * assistant appears to be lying about having found it.
+   */
+  const [place, setPlace] = useState<(MapPoint & { label?: string }) | null>(
+    home,
+  );
   const [chosenModel, chooseModel] = useModelChoice();
 
   const sendRef = useRef<(text: string) => void>(() => {});
@@ -135,7 +145,11 @@ export function HudWorkspace({
      * closed or minimised is a thing that happened where nobody was looking.
      */
     onFocus: (next) => {
-      setPlace({ latitude: next.latitude, longitude: next.longitude });
+      setPlace({
+        latitude: next.latitude,
+        longitude: next.longitude,
+        label: next.label,
+      });
       setPanel("map", "open");
     },
     /**
@@ -251,7 +265,7 @@ export function HudWorkspace({
               paths={worldPaths}
               selected={place}
               home={home}
-              onSelect={setPlace}
+              onSelect={(point) => setPlace(point)}
               // A floor as well as a ceiling: in a short window the read-outs
               // would otherwise squeeze the map down to a sliver of ocean.
               className="min-h-[8rem] flex-1 p-2"
@@ -273,7 +287,12 @@ export function HudWorkspace({
                   silently left the read-outs stacked at every width.
                 */}
                 <div className="grid @lg:grid-cols-2">
-                  <PlaceReadout point={place} homeZone={timezone} />
+                  <PlaceReadout
+                    point={place}
+                    homeZone={timezone}
+                    label={place.label}
+                    home={home}
+                  />
                   <WeatherReadout point={place} className="@lg:border-l" />
                 </div>
                 <AskAboutHere onAsk={askAboutHere} busy={assistant.busy} />
@@ -305,7 +324,9 @@ export function HudWorkspace({
       case "plans":
         return String(overview.counts.plans).padStart(2, "0");
       case "map":
-        return place ? formatCoordinates(place) : undefined;
+        // The name when there is one: coordinates alone cannot show that
+        // anything happened when the new point is a few hundred metres away.
+        return place?.label ?? (place ? formatCoordinates(place) : undefined);
       default:
         return undefined;
     }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { placeTime, type PlaceTime } from "@/lib/map/local-time";
+import { distanceKm } from "@/lib/map/distance";
 import { formatCoordinates, type MapPoint } from "./world-map";
 import { cn } from "@/lib/utils";
 
@@ -15,9 +16,15 @@ import { cn } from "@/lib/utils";
 export function PlaceReadout({
   point,
   homeZone,
+  label,
+  home,
 }: {
   point: MapPoint;
   homeZone: string;
+  /** What the place is called, when something named it. */
+  label?: string;
+  /** Where the user lives, so a nearby result can say how near. */
+  home?: MapPoint | null;
 }) {
   const [now, setNow] = useState<PlaceTime | null>(null);
 
@@ -83,6 +90,27 @@ export function PlaceReadout({
           {now.relative}
         </span>
       </div>
+
+      {label && (
+        <div className="border-border/60 flex items-baseline justify-between gap-2 border-t pt-2">
+          <span className="text-accent min-w-0 flex-1 truncate text-xs">
+            {label}
+          </span>
+          {/*
+            How far, when it is somewhere you could walk to. The world map
+            cannot show a difference of a few hundred metres, so the distance
+            is the only thing on screen that can.
+          */}
+          {home && (
+            <span className="text-text-faint shrink-0 font-mono text-[10px]">
+              {formatDistance(
+                distanceKm(home.latitude, home.longitude, point.latitude, point.longitude),
+              )}{" "}
+              from home
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -95,4 +123,11 @@ function formatOffset(minutes: number): string {
   return `${sign}${String(Math.floor(total / 60)).padStart(2, "0")}:${String(
     total % 60,
   ).padStart(2, "0")}`;
+}
+
+/** "470 m", "1.2 km", "580 km" — the unit a person would use at that range. */
+function formatDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  if (km < 10) return `${km.toFixed(1)} km`;
+  return `${Math.round(km)} km`;
 }
