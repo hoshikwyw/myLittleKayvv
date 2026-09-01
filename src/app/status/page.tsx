@@ -71,12 +71,12 @@ function buildStatus(): Subsystem[] {
       name: "External tools",
       detail: (() => {
         const on = [
-          configured.maps() && "Maps",
+          configured.maps() && "Place search",
           configured.search() && "Search",
           configured.calendar() && "Calendar",
         ].filter(Boolean);
         return on.length === 3
-          ? "Maps, Search, Calendar"
+          ? "Place search, Search, Calendar"
           : on.length > 0
             ? `${on.join(" and ")} connected — add the rest`
             : "Maps, Search, Calendar — add API keys";

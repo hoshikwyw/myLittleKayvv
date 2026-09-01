@@ -1072,7 +1072,61 @@ viewport would be eighty pixels each, which is not a layout, it is a list of
 title bars. Horizontal overflow is prevented at every width; vertical only
 where the result is still usable.
 
-## 29. Open questions
+## 29. Place search without a card
+
+The status panel said `MAPS — OFFLINE`, which read as the world map being
+broken. It was not: the world map draws itself from data in the repo and its
+weather comes from a keyless service. That row was the Google Places tool, and
+naming a row after the credential rather than the capability is how a working
+feature gets reported as down. It says **place search** now.
+
+Google Places was the original plan and is no longer used. It requires a
+billing account with a card on file even to stay inside the free allowance —
+Google retired the pooled $200 monthly credit in March 2025 — and every other
+external service here is keyless. So place search moved to OpenStreetMap,
+behind a `PlacesProvider` interface for the same reason as the weather and LLM
+ones.
+
+**Two services, because neither answers both questions.** Nominatim geocodes
+names: it finds Shwedagon Pagoda, and returns *nothing at all* for "coffee shop
+in Yangon" — checked against the live service, not assumed. Overpass selects
+every object carrying a tag within a radius, which is what a category search
+actually is, but only if you already know the tag. So a query is matched
+against a hand-written table of categories first and falls through to the name
+lookup when nothing fits. The table is written out rather than derived because
+OSM's tagging is not regular: a pharmacy is `amenity`, a bakery is `shop`, a
+park is `leisure`, a hotel is `tourism`.
+
+**Three bugs, all found by calling it rather than reading it.**
+
+"Shwedagon Pagoda" contains the word "pagoda", matched the place-of-worship
+category, and came back with three monasteries near home — none of them the
+pagoda. A capitalised word that is not part of the category phrase now marks a
+query as naming something particular. The first draft of that check skipped the
+first word, on the theory that any sentence starts capitalised; "Shwedagon" is
+the first word, so it skipped the only evidence there was.
+
+"bookshop near Bangkok" answered with a bookshop in Melbourne and another in
+Italy. Nominatim will match a name anywhere on Earth, and anywhere on Earth is
+not what "near" means. It is bounded to a box around the search point now, and
+only opens out when that finds nothing — so a landmark on the other side of the
+world is still findable, and reported honestly as 8,000km away.
+
+And the assistant described a tea shop as "a small, quiet spot popular for its
+local tea blends". OpenStreetMap returns a name, a category, coordinates and
+sometimes opening hours. It returns no reviews and no description, so all of
+that was invented. The tool description now says so in as many words.
+
+Unnamed objects are dropped. OSM is full of things tagged correctly and never
+named, and three results all called "Cafe" is worse than one real one. Ways are
+queried as well as nodes, because a supermarket is usually a building outline
+rather than a point — asking only for nodes silently misses the larger half.
+
+Nominatim's usage policy asks for a User-Agent identifying the application and
+no more than one request a second. Both are honoured; it is a free service on
+donated hardware.
+
+## 30. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

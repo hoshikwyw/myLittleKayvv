@@ -129,7 +129,13 @@ export const configured = {
   telegram: () =>
     Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
   email: () => Boolean(process.env.RESEND_API_KEY),
-  maps: () => Boolean(process.env.GOOGLE_MAPS_API_KEY),
+  /**
+   * Place search runs on OpenStreetMap, which needs no key — so this is
+   * always true. Kept as a function rather than deleted because the status
+   * panel still reports the capability, and a reader deserves to see *why*
+   * it is always on rather than find a hardcoded `true` in the UI.
+   */
+  maps: () => true,
   search: () =>
     Boolean(process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID),
   calendar: () =>

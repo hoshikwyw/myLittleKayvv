@@ -1,71 +1,43 @@
 import { z } from "zod";
-import { env } from "@/lib/env";
-import { parseHomeLocation } from "@/lib/map/home";
+import { homeLocation } from "@/lib/map/home";
+import { geocode } from "@/lib/map/geocode";
+import { getPlacesProvider } from "@/lib/places/osm";
 import { defineTool } from "./types";
 
 /**
- * Google Places API (New).
+ * Finding real places — shops, restaurants, landmarks.
  *
- * Text search rather than nearby search: the model already has a phrase from
- * the user ("quiet coffee near the office"), and text search reads it far
- * better than a category enum ever would.
+ * Runs on OpenStreetMap rather than Google Places, because Google requires a
+ * billing account with a card on file even to stay inside the free allowance,
+ * and every other external service this assistant uses is keyless. The
+ * trade-off is real and worth stating: no star ratings, no "open now", and
+ * thinner coverage of small businesses. What it does have is the address, the
+ * category, the coordinates, and often the opening hours as written on the
+ * door.
+ *
+ * Registered unconditionally for the same reason as `weather_at`: with no key
+ * to be missing, it cannot become the tool that always fails.
  */
 
-const ENDPOINT = "https://places.googleapis.com/v1/places:searchText";
-
-/**
- * The field mask is mandatory and directly sets the billing tier. Asking only
- * for what gets shown keeps this in the cheapest SKU — requesting everything is
- * the classic way to turn a free tier into a bill.
- */
-const FIELD_MASK = [
-  "places.displayName",
-  "places.formattedAddress",
-  "places.location",
-  "places.rating",
-  "places.userRatingCount",
-  "places.currentOpeningHours.openNow",
-  "places.googleMapsUri",
-  "places.primaryTypeDisplayName",
-].join(",");
-
-interface PlacesResponse {
-  places?: Array<{
-    displayName?: { text?: string };
-    formattedAddress?: string;
-    location?: { latitude?: number; longitude?: number };
-    rating?: number;
-    userRatingCount?: number;
-    currentOpeningHours?: { openNow?: boolean };
-    googleMapsUri?: string;
-    primaryTypeDisplayName?: { text?: string };
-  }>;
-  error?: { message?: string };
-}
-
-/** Metres. Wide enough to cover a city district, tight enough to stay local. */
-const DEFAULT_RADIUS = 5000;
-
-/**
- * The model may pass `near` as either a place name or a coordinate pair, so
- * this has to answer "is this a coordinate?" as well as parse one. Shared with
- * the map so both agree on what counts as a valid home.
- */
-const parseLatLng = parseHomeLocation;
+/** Metres. Wide enough to cross a district, tight enough to stay walkable. */
+const DEFAULT_RADIUS = 4000;
 
 export const findPlaces = defineTool({
   name: "find_places",
   description:
-    "Search Google Maps for real places — restaurants, shops, landmarks, " +
-    "anything with an address. Pass the user's own phrasing as the query. " +
-    "Use this instead of recalling places from memory, because opening hours " +
-    "and ratings change and you will be out of date.",
+    "Find real places on the map — cafes, restaurants, pharmacies, shops, " +
+    "landmarks. Pass the user's own phrasing as the query. Use `near` for a " +
+    "town or district to search around, or omit it to search near where the " +
+    "user lives. Use this rather than recalling places from memory, because " +
+    "you have no way to know what is actually there. Report only the fields " +
+    "returned: this data has no reviews or descriptions, so never call a " +
+    "place quiet, popular, or good.",
   schema: z.object({
     query: z
       .string()
       .min(2)
       .max(200)
-      .describe('What to look for, such as "quiet coffee shop" or "pharmacy"'),
+      .describe('What to look for, such as "coffee shop" or "pharmacy"'),
     near: z
       .string()
       .max(120)
@@ -76,56 +48,84 @@ export const findPlaces = defineTool({
     limit: z.number().int().min(1).max(10).default(5),
   }),
   handler: async ({ query, near, limit }, { signal }) => {
-    const bias = near ? parseLatLng(near) : parseLatLng(env.homeLocation);
+    const centre = await resolveCentre(near, signal);
 
-    const body: Record<string, unknown> = {
-      textQuery: near && !parseLatLng(near) ? `${query} near ${near}` : query,
-      maxResultCount: limit,
-    };
-
-    if (bias) {
-      body.locationBias = {
-        circle: { center: bias, radius: DEFAULT_RADIUS },
+    if (!centre && near) {
+      return {
+        found: 0,
+        places: [],
+        note: `Could not work out where "${near}" is. Ask for a town or country.`,
       };
     }
 
-    const response = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": env.googleMapsApiKey,
-        "X-Goog-FieldMask": FIELD_MASK,
-      },
-      body: JSON.stringify(body),
+    const places = await getPlacesProvider().search({
+      query,
+      latitude: centre?.latitude,
+      longitude: centre?.longitude,
+      radius: DEFAULT_RADIUS,
+      limit,
       signal,
     });
 
-    const data = (await response.json().catch(() => null)) as PlacesResponse | null;
-
-    if (!response.ok) {
-      throw new Error(
-        data?.error?.message ?? `Places search failed (${response.status})`,
-      );
-    }
-
-    const places = data?.places ?? [];
     if (places.length === 0) {
-      return { found: 0, places: [], note: `Nothing found for "${query}".` };
+      return {
+        found: 0,
+        places: [],
+        // Said plainly, because OpenStreetMap genuinely has gaps and the
+        // honest answer is "not on the map", not "does not exist".
+        note:
+          `Nothing on OpenStreetMap for "${query}"` +
+          (centre ? " near there" : "") +
+          ". It may simply not be mapped — say so rather than guessing.",
+      };
     }
 
     return {
       found: places.length,
+      searchedNear: centre
+        ? `${centre.latitude.toFixed(2)},${centre.longitude.toFixed(2)}`
+        : undefined,
       places: places.map((place) => ({
-        name: place.displayName?.text ?? "Unnamed",
-        kind: place.primaryTypeDisplayName?.text,
-        address: place.formattedAddress,
-        rating: place.rating,
-        reviews: place.userRatingCount,
-        // Undefined rather than false when unknown — "closed" and "we don't
-        // know" are different answers and must not be conflated.
-        openNow: place.currentOpeningHours?.openNow,
-        mapsUrl: place.googleMapsUri,
+        name: place.name,
+        kind: place.kind,
+        address: place.address,
+        distanceKm: place.distanceKm,
+        // In OSM's own syntax, e.g. "Mo-Su 07:00-19:00". Undefined rather than
+        // false when unknown: "closed" and "we don't know" are different
+        // answers and must not be conflated.
+        openingHours: place.openingHours,
+        phone: place.phone,
+        website: place.website,
+        coordinates: `${place.latitude.toFixed(5)},${place.longitude.toFixed(5)}`,
       })),
+      source: "OpenStreetMap",
     };
   },
 });
+
+/** "16.84,96.17", a town name, or home. */
+async function resolveCentre(
+  near: string | undefined,
+  signal?: AbortSignal,
+): Promise<{ latitude: number; longitude: number } | null> {
+  if (!near) return homeLocation();
+
+  const pair = near.split(",");
+  if (pair.length === 2) {
+    const latitude = Number(pair[0].trim());
+    const longitude = Number(pair[1].trim());
+    if (
+      Number.isFinite(latitude) &&
+      Number.isFinite(longitude) &&
+      Math.abs(latitude) <= 90 &&
+      Math.abs(longitude) <= 180
+    ) {
+      return { latitude, longitude };
+    }
+  }
+
+  // A name, so it needs geocoding first — the same keyless geocoder the
+  // weather tool uses, rather than a second one that could disagree with it.
+  const [match] = await geocode(near, { limit: 1, signal });
+  return match ? { latitude: match.latitude, longitude: match.longitude } : null;
+}

@@ -254,7 +254,12 @@ export function SystemBody({
     ["memory", status.database],
     ["voice", status.voice],
     ["telegram", status.telegram],
-    ["maps", status.maps],
+    // "maps" read as the world map, which is always on and needs no key —
+    // it draws itself and its weather comes from a keyless service. This row
+    // is the Google Places tool for finding real businesses, and naming it
+    // after the thing it gates stops the panel reporting a working feature
+    // as offline.
+    ["place search", status.maps],
     ["web search", status.search],
     ["calendar", status.calendar],
   ];

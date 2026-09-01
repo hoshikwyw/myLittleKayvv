@@ -19,9 +19,14 @@ import { configured } from "@/lib/env";
  * the model a tool that always fails teaches it to stop trying.
  */
 export function buildToolRegistry(log: MemoryWriteLog): ToolRegistry {
-  // Weather joins the builtins rather than the credentialed tools: its
-  // geocoder and provider are both keyless, so it always works.
-  const registry = new ToolRegistry().register(...builtinTools, weatherAt);
+  // Weather and place search join the builtins rather than the credentialed
+  // tools: Open-Meteo and OpenStreetMap are both keyless, so neither can
+  // become the tool that always fails.
+  const registry = new ToolRegistry().register(
+    ...builtinTools,
+    weatherAt,
+    findPlaces,
+  );
 
   if (configured.database()) {
     registry.register(...createMemoryTools(log), ...createPlanTools(log));
@@ -29,7 +34,6 @@ export function buildToolRegistry(log: MemoryWriteLog): ToolRegistry {
 
   // Each external tool appears only once its credentials exist. Offering a tool
   // that always fails teaches the model to stop reaching for it.
-  if (configured.maps()) registry.register(findPlaces);
   if (configured.search()) registry.register(searchWeb);
   if (configured.calendar()) registry.register(readCalendar);
 
