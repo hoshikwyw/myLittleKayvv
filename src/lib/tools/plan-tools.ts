@@ -24,7 +24,10 @@ export function createPlanTools(log: MemoryWriteLog) {
       "Write down something the user intends to do — an appointment, an " +
       "errand, a task. Call get_current_datetime first if the user said " +
       '"tomorrow" or "Friday", so the date you store is actually right. Omit ' +
-      "the time for something with no particular hour.",
+      "the time for something with no particular hour. If they asked for it " +
+      "on their calendar, use this and say plainly that you saved it as a " +
+      "plan because you cannot write to their calendar — otherwise they will " +
+      "go looking for it in Google and not find it.",
     mutates: true,
     schema: z.object({
       title: z.string().min(2).max(160).describe("What they intend to do"),
