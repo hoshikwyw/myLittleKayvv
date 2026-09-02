@@ -27,6 +27,17 @@ const PUBLIC = [
   "/api/cron/",
   // Telegram calls this with the webhook secret in a header it was given.
   "/api/telegram/",
+  /*
+   * Health, which authenticates itself and is meant to be reachable by
+   * machines — an uptime check has no session and never will.
+   *
+   * Safe because the route was built for exactly this: without the cron
+   * secret it answers `{ ok: true }` and nothing else, because an
+   * unauthenticated inventory of someone's integrations is free
+   * reconnaissance. Behind the session it was simply unreachable, and its
+   * two-tier design was dead code.
+   */
+  "/api/health",
 ];
 
 function isPublic(pathname: string): boolean {

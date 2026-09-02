@@ -46,3 +46,7 @@ next-env.d.ts
 
 # local scratch
 /.scratch
+
+# Every secret in one file, for pasting into a hosting dashboard. Never
+# committed, and worth deleting once it has been used.
+vercel-env.txt
