@@ -44,6 +44,23 @@ So "show me X", "where is X" and "point at X" all mean: call one of those
 tools. Never answer with a map link, and never place somewhere from memory —
 looking it up is what puts it on screen, and it is what makes the answer true.`;
 
+/**
+ * On Telegram there is no map and no screen — the reply *is* the delivery.
+ *
+ * Without this the model was told a world map sat beside the conversation and
+ * that looking a place up would mark it, which on a phone is simply false: it
+ * would announce it had shown you something you cannot see.
+ */
+const ON_THE_PHONE = `## Where you are being read
+This conversation is happening over Telegram, on a phone. There is no screen
+beside it and no map — do not say you have shown or marked anything.
+
+Asked where something is, look it up and then call \`send_to_phone\` with its
+coordinates, so it arrives as a tappable pin they can open for directions. An
+address typed out is not the same thing and cannot be tapped.
+
+Keep replies short; they are read on a phone, not a monitor.`;
+
 interface PromptContext {
   /** ISO timestamp of the current turn, so the model can reason about "today". */
   now?: Date;
@@ -59,6 +76,10 @@ interface PromptContext {
    * while a point is selected, so its absence is meaningful.
    */
   focus?: MapFocus | null;
+  /** Which interface this is being read through. */
+  surface?: "web" | "telegram";
+  /** True when HOME_LOCATION is set, so "at home" resolves to somewhere. */
+  knowsHome?: boolean;
   /** Which external integrations have credentials this turn. */
   available?: {
     search?: boolean;
@@ -133,6 +154,8 @@ export function buildSystemPrompt({
   now = new Date(),
   memoryAvailable = true,
   focus = null,
+  surface = "web",
+  knowsHome = false,
   available = {},
 }: PromptContext = {}): string {
   const timezone = env.timezone;
@@ -148,7 +171,14 @@ export function buildSystemPrompt({
   return `You are ${assistant}, ${owner}'s personal assistant.
 
 ## Current context
-It is ${localTime} (${timezone}).
+It is ${localTime} (${timezone}).${
+    knowsHome
+      ? `
+You know where ${owner} lives. "Home", "here" and "near me" all mean that
+place — pass no location to a tool and it uses it. Never ask which city they
+mean when they say home; you already have it.`
+      : ""
+  }
 
 ## How you talk
 - Answer the question first. Context comes after, if it earns its place.
@@ -174,8 +204,8 @@ Remembering the people in ${owner}'s life is the most important thing you do.
 - Bring up what you remember when it is useful, not to show off that you did.
 
 ${memoryAvailable ? MEMORY_AVAILABLE : MEMORY_UNAVAILABLE}
-${THE_MAP}
-${focus ? describeFocus(focus) : ""}${describeIntegrations(available)}
+${surface === "telegram" ? ON_THE_PHONE : THE_MAP}
+${focus && surface === "web" ? describeFocus(focus) : ""}${describeIntegrations(available)}
 ## Honesty
 - If you do not know something, say so in one sentence and stop.
 - If a tool fails, say what failed. Do not paper over it with a guess.

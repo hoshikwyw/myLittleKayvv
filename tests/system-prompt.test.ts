@@ -106,3 +106,40 @@ test("with memory offline the prompt stops naming memory tools", () => {
   assert.ok(!prompt.includes("remember_person"));
   assert.match(prompt, /Memory is offline/);
 });
+
+test("a Telegram reply is not told there is a map on screen", () => {
+  /**
+   * On a phone the reply *is* the delivery. Told about a map beside the
+   * conversation, the model announces it has marked something the reader
+   * cannot see — which is simply untrue there.
+   */
+  const phone = buildSystemPrompt({ now: NOW, surface: "telegram" });
+
+  assert.ok(!phone.includes("The map on screen"));
+  assert.match(phone, /no screen\s+beside it and no map/);
+  assert.match(phone, /send_to_phone/);
+
+  const web = buildSystemPrompt({ now: NOW, surface: "web" });
+  assert.match(web, /The map on screen/);
+  assert.ok(!web.includes("Where you are being read"));
+});
+
+test("a selected map point means nothing on a phone", () => {
+  // The focus comes from a panel that is not there, so mentioning it would be
+  // describing furniture in another room.
+  const focus = { latitude: 16.84, longitude: 96.17, zone: "Asia/Yangon" };
+
+  assert.ok(
+    !buildSystemPrompt({ now: NOW, surface: "telegram", focus }).includes(
+      "Where they are pointing",
+    ),
+  );
+  assert.match(
+    buildSystemPrompt({ now: NOW, surface: "web", focus }),
+    /Where they are pointing/,
+  );
+});
+
+test("the web is the default, so a caller that says nothing gets the map", () => {
+  assert.match(buildSystemPrompt({ now: NOW }), /The map on screen/);
+});

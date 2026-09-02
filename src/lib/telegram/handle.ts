@@ -1,4 +1,4 @@
-import { buildSystemPrompt, getProvider } from "@/lib/llm";
+import { buildFallbackChain, buildSystemPrompt } from "@/lib/llm";
 import type { ConversationTurn } from "@/lib/llm";
 import {
   buildToolRegistry,
@@ -7,6 +7,7 @@ import {
   runAgent,
 } from "@/lib/agent";
 import { configured, env } from "@/lib/env";
+import { homeLocation } from "@/lib/map/home";
 import {
   appendMessage,
   ensureConversation,
@@ -170,11 +171,20 @@ export async function handleMessage({
   let reply = "";
 
   for await (const event of runAgent({
-    provider: getProvider(),
+    /*
+     * The same chain the web uses.
+     *
+     * This was a single provider, so a Gemini quota that had run out left the
+     * web recovering onto Groq while Telegram simply failed — and Telegram is
+     * the half that carries reminders.
+     */
+    provider: buildFallbackChain(),
     tools,
     turns,
     system: buildSystemPrompt({
       memoryAvailable: persist,
+      surface: "telegram",
+      knowsHome: Boolean(homeLocation()),
       available: {
         search: configured.search(),
         calendar: configured.calendar(),

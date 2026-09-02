@@ -5,6 +5,7 @@ import {
   OpenStreetMapProvider,
   distanceKm,
   namesSomething,
+  respellings,
 } from "@/lib/places/osm";
 
 /**
@@ -242,4 +243,54 @@ test("every request identifies the application, as the policy requires", async (
   for (const headers of seen) {
     assert.match(headers["User-Agent"] ?? "", /MyLittleKayv/);
   }
+});
+
+test("a place spelled the other way round is still found", () => {
+  /**
+   * Not hypothetical. "Hledan Centre" returns nothing from Nominatim while
+   * "Hledan Center" returns the mall, because whoever mapped it used the
+   * American spelling. Neither is a typo and the person asking cannot know
+   * which one to use.
+   */
+  assert.deepEqual(respellings("Hledan Centre"), [
+    "Hledan Centre",
+    "Hledan Center",
+  ]);
+
+  // And the other direction, for the same reason.
+  assert.deepEqual(respellings("Hledan Center"), [
+    "Hledan Center",
+    "Hledan Centre",
+  ]);
+});
+
+test("a respelling keeps the capitalisation it was given", () => {
+  // "Center" in a name, not "center", which reads as a typo of its own.
+  assert.ok(respellings("City Theatre").includes("City Theater"));
+  assert.ok(respellings("the old theatre").includes("the old theater"));
+});
+
+test("a query with nothing to respell is tried once", () => {
+  // One request, not two. The extra attempt only exists to cover a real
+  // ambiguity, and paying for it on every miss would be waste.
+  assert.deepEqual(respellings("Shwedagon Pagoda"), ["Shwedagon Pagoda"]);
+  assert.deepEqual(respellings("coffee"), ["coffee"]);
+});
+
+test("the other spelling is tried only after the first finds nothing", async () => {
+  const calls = stub({
+    overpass: [],
+    boundedNominatim: [],
+    nominatim: [],
+  });
+
+  await new OpenStreetMapProvider().search({
+    query: "Hledan Centre",
+    ...HOME,
+  });
+
+  // Two spellings, each tried near and then far: four lookups before giving up.
+  const asked = calls.filter((c) => c.startsWith("nominatim"));
+  assert.equal(asked.length, 4);
+  assert.ok(asked.some((c) => c.includes("Hledan+Center") || c.includes("Hledan%20Center")));
 });

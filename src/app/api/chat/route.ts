@@ -13,6 +13,7 @@ import {
 } from "@/lib/agent";
 import type { ConversationTurn } from "@/lib/llm";
 import { configured } from "@/lib/env";
+import { homeLocation } from "@/lib/map/home";
 import { zoneAt } from "@/lib/map/local-time";
 import type { ChatStreamEvent } from "@/types";
 import {
@@ -179,6 +180,7 @@ export async function POST(request: Request) {
           system: buildSystemPrompt({
             memoryAvailable: configured.database(),
             focus: parsed.data.focus,
+            knowsHome: Boolean(homeLocation()),
             available: {
               search: configured.search(),
               calendar: configured.calendar(),

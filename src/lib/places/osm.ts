@@ -109,6 +109,41 @@ export function namesSomething(query: string): boolean {
   );
 }
 
+/**
+ * British and American spellings of the same word.
+ *
+ * Only the pairs that actually turn up in the names of places — this is not an
+ * attempt at a dictionary. Each entry costs one extra request, and only on a
+ * miss, so the list stays short on purpose.
+ */
+const SPELLINGS: Array<[RegExp, string]> = [
+  [/\bcentre\b/gi, "center"],
+  [/\bcenter\b/gi, "centre"],
+  [/\btheatre\b/gi, "theater"],
+  [/\btheater\b/gi, "theatre"],
+  [/\bharbour\b/gi, "harbor"],
+  [/\bharbor\b/gi, "harbour"],
+];
+
+/** The query as asked, then any respelling of it that differs. */
+export function respellings(query: string): string[] {
+  const out = [query];
+
+  for (const [pattern, replacement] of SPELLINGS) {
+    const swapped = query.replace(pattern, (match) =>
+      // Keep the capitalisation the asker used: "Centre" becomes "Center",
+      // not "center", which reads wrong in a place name.
+      match[0] === match[0].toUpperCase()
+        ? replacement[0].toUpperCase() + replacement.slice(1)
+        : replacement,
+    );
+
+    if (swapped !== query && !out.includes(swapped)) out.push(swapped);
+  }
+
+  return out;
+}
+
 export class OpenStreetMapProvider implements PlacesProvider {
   readonly name = "openstreetmap";
 
@@ -213,12 +248,27 @@ export class OpenStreetMapProvider implements PlacesProvider {
     const { latitude, longitude } = options;
     const local = latitude !== undefined && longitude !== undefined;
 
-    if (local) {
-      const bounded = await this.nominatim(options, true);
-      if (bounded.length > 0) return bounded;
+    /*
+     * Each spelling, near then far.
+     *
+     * Nominatim matches names closely enough that "Hledan Centre" finds
+     * nothing while "Hledan Center" finds the mall — the building is simply
+     * tagged with the American spelling. Neither is a typo, and the person
+     * asking has no way to know which one whoever mapped it happened to use.
+     */
+    for (const query of respellings(options.query)) {
+      const attempt = { ...options, query };
+
+      if (local) {
+        const nearby = await this.nominatim(attempt, true);
+        if (nearby.length > 0) return nearby;
+      }
+
+      const anywhere = await this.nominatim(attempt, false);
+      if (anywhere.length > 0) return anywhere;
     }
 
-    return this.nominatim(options, false);
+    return [];
   }
 
   private async nominatim(
