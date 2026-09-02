@@ -16,6 +16,7 @@
     "db:local": "docker run -d --name mylittlekayv-postgres -e POSTGRES_PASSWORD=devpass -e POSTGRES_DB=kayv -p 55432:5432 pgvector/pgvector:pg17",
     "db:local:stop": "docker rm -f mylittlekayv-postgres",
     "db:migrate:local": "node scripts/migrate.mjs postgresql://postgres:devpass@localhost:55432/kayv",
+    "db:migrate:url": "node scripts/migrate.mjs",
     "telegram": "tsx scripts/telegram.ts"
   },
   "dependencies": {
