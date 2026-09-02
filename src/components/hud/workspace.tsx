@@ -8,6 +8,7 @@ import {
   CalendarHeart,
   Globe2,
   ListChecks,
+  LogOut,
   MessageSquare,
   Mic,
   Plus,
@@ -17,6 +18,7 @@ import {
 import { useAssistant } from "@/hooks/use-assistant";
 import { useVoice } from "@/hooks/use-voice";
 import { VoiceOrb } from "@/components/voice-orb";
+import { useRouter } from "next/navigation";
 import { ConversationHistory } from "@/components/conversation-history";
 import { HudPanel, type PanelState } from "./panel";
 import { usePanelLayout } from "@/hooks/use-panel-layout";
@@ -96,6 +98,7 @@ export function HudWorkspace({
   worldPaths,
   home,
   models,
+  locked,
 }: {
   assistantName: string;
   overview: MemoryOverview;
@@ -106,6 +109,8 @@ export function HudWorkspace({
   /** Null when HOME_LOCATION is unset, which is an ordinary state. */
   home: MapPoint | null;
   models: ModelSummary[];
+  /** True when a password guards the app, so there is a session to end. */
+  locked: boolean;
 }) {
   // The arrangement lives in localStorage, so the workspace is where you left
   // it — see the hook for why that is not React state.
@@ -131,6 +136,7 @@ export function HudWorkspace({
     home,
   );
   const [chosenModel, chooseModel] = useModelChoice();
+  const router = useRouter();
   const [zoom, setZoom] = useState(WORLD_STEP);
 
   const view = viewFor(zoom, place);
@@ -230,6 +236,20 @@ export function HudWorkspace({
     setPanel("chat", "open");
     void assistant.send("What's it like here right now?");
   }, [assistant, setPanel]);
+
+  /**
+   * Ending the session.
+   *
+   * `replace`, not `push`: the workspace must not be one back-button press
+   * away after signing out. `refresh` alongside it throws away the cached
+   * server render, so nothing of what was on screen survives in memory.
+   */
+  const signOut = useCallback(async () => {
+    voice.cancelSpeech();
+    await fetch("/api/login", { method: "DELETE" }).catch(() => {});
+    router.replace("/login");
+    router.refresh();
+  }, [voice, router]);
 
   /** Reaching for the microphone mid-answer means "stop, listen to me". */
   const toggleMic = useCallback(() => {
@@ -600,6 +620,23 @@ export function HudWorkspace({
               else assistant.startNew();
             }}
           />
+
+          {/*
+            Only when there is a session to end. Without a password there is
+            nothing to sign out of, and a button that logs you out of nothing
+            is a button that raises a question it cannot answer.
+          */}
+          {locked && (
+            <button
+              type="button"
+              onClick={signOut}
+              aria-label="Sign out"
+              title="Sign out"
+              className="border-border text-text-muted hover:text-danger grid size-10 shrink-0 place-items-center rounded-sm border transition-colors"
+            >
+              <LogOut className="size-4" />
+            </button>
+          )}
         </div>
       </div>
     </div>

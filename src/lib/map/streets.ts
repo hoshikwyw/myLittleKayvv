@@ -95,7 +95,7 @@ export async function streetsAround(
   // `out geom` returns each way's points inline, which is the whole reason
   // this is one request rather than one for ways and another for their nodes.
   const query =
-    `[out:json][timeout:25];(` +
+    `[out:json][timeout:20];(` +
     `way["highway"~"^(${roads})$"]${around};` +
     `way["waterway"~"^(river|stream|canal)$"]${around};` +
     `way["natural"="coastline"]${around};` +
@@ -109,7 +109,10 @@ export async function streetsAround(
         "User-Agent": USER_AGENT,
       },
       body: new URLSearchParams({ data: query }),
-      signal: signal ?? AbortSignal.timeout(25_000),
+      // Inside the function's own 30s ceiling with room to spare. A fetch
+      // that outlives its function is killed mid-flight, so nothing is cached
+      // and the next request pays the same cost again.
+      signal: signal ?? AbortSignal.timeout(22_000),
     });
 
     if (!response.ok) return null;

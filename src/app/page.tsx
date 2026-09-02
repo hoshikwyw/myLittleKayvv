@@ -49,6 +49,7 @@ export default async function Home() {
       home={homeLocation()}
       // Labels and availability only — never a key.
       models={modelSummaries()}
+      locked={configured.locked()}
     />
   );
 }

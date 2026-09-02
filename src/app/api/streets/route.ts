@@ -4,6 +4,13 @@ import { streetsAround } from "@/lib/map/streets";
 export const dynamic = "force-dynamic";
 
 /**
+ * A cold Overpass query takes 9 to 17 seconds, which is fine locally and needs
+ * saying out loud on Vercel: the Hobby default would cut it off part-way and
+ * the map would silently never draw.
+ */
+export const maxDuration = 30;
+
+/**
  * Street geometry around a point, as SVG paths.
  *
  * A route rather than a fetch from the component, for the same reasons as the

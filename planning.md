@@ -1263,7 +1263,51 @@ the web" among the things the assistant cannot do, which would have made it
 refuse questions it can answer perfectly well. It now names the current half
 specifically, and says the rest still works.
 
-## 33. Open questions
+## 33. A lock before a public URL
+
+Deploying was going to be Neon plus Vercel and a list of environment
+variables. Checking the code first turned up something that made the rest wait:
+**there was no authentication anywhere.** `/api/chat`, `/api/memory` and
+`/api/conversations` had no guard at all. Only the cron and Telegram routes
+were protected, and those only because machines call them.
+
+On localhost that is nothing. On a public URL it is birthdays, relationships
+and private notes about the people the owner loves, readable and deletable by
+anyone who finds the address, with the API quotas thrown in.
+
+**One password, one signed cookie, no library.** There is exactly one account,
+no sign-up, no reset and no roles, so an auth provider would add a vendor and a
+dependency to compare a single string. This is Web Crypto and a hundred lines —
+`node:crypto` is not available, because the proxy runs on the Edge runtime.
+
+Three details that are the whole point of writing it carefully. The signature
+covers the expiry, so a real token cannot be edited to last forever. Both the
+password check and the signature check are constant time, because returning
+early on the first wrong byte tells an attacker how much of a guess was right.
+And a wrong password costs a deliberate second, because a single secret with no
+lockout can otherwise be walked through thousands of times a minute.
+
+**Closed by default.** The proxy lists what may be reached without a session
+rather than what must be protected — routes get added often, and a list of
+things to remember to guard is a list somebody eventually forgets to add to.
+
+Absent `APP_PASSWORD` means no gate, which is what makes local development
+bearable and is also exactly the mistake that would expose everything in
+production. So `/api/health` reports `ok: false` and a `WARNING` when it is
+unset in a production build, rather than quietly reporting healthy.
+
+`middleware.ts` is deprecated in Next 16 and renamed to `proxy.ts` — found by
+reading the bundled docs rather than writing the file from memory.
+
+**On the hosting itself**, both tiers are genuinely free and neither wants a
+card. Vercel Hobby allows one cron a day, which the morning digest already
+assumed. Neon sleeps after five minutes and wakes on the next query; Supabase
+works too and is 500MB with pgvector, but a free project **pauses after seven
+days without database activity** and needs unpausing by hand — for something
+whose job is to remember birthdays unattended, waking itself is worth more than
+the extra storage.
+
+## 34. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

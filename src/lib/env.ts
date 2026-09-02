@@ -109,6 +109,16 @@ export const env = {
   },
 
   // --- App ---
+  /**
+   * The single password that guards the whole app.
+   *
+   * Optional so local development needs no login. Required in production, and
+   * treated as such by the deploy checklist and `/api/health` — without it a
+   * public URL exposes every fact stored about the owner's family.
+   */
+  get appPassword() {
+    return optional("APP_PASSWORD");
+  },
   get cronSecret() {
     return required("CRON_SECRET");
   },
@@ -143,6 +153,8 @@ export const configured = {
    * answer what happened this week", which is the part a key buys.
    */
   search: () => Boolean(process.env.TAVILY_API_KEY),
+  /** Whether the app is behind a password. Checked, not assumed. */
+  locked: () => Boolean(process.env.APP_PASSWORD),
   calendar: () =>
     Boolean(
       process.env.GOOGLE_OAUTH_CLIENT_ID &&

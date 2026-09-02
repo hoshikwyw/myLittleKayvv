@@ -85,6 +85,9 @@ export async function GET(request: Request) {
   const database = await checkDatabase();
 
   const subsystems = {
+    // First, because it is the only one whose absence is dangerous rather than
+    // merely limiting: unlocked in production means the whole memory is public.
+    locked: configured.locked(),
     llm: configured.llm(),
     database: database.connected,
     migrated: "migrated" in database ? database.migrated : false,
@@ -100,10 +103,24 @@ export async function GET(request: Request) {
   // model, and reminders do not exist without a database and a way to deliver.
   const essential =
     subsystems.llm && subsystems.database && subsystems.migrated;
+
+  /*
+   * Deployed and unlocked is not a warning, it is a fault. Everything else
+   * here reports a missing feature; this one reports that the birthdays,
+   * relationships and private notes are readable by anyone with the URL.
+   */
+  const exposed = process.env.NODE_ENV === "production" && !subsystems.locked;
   const remindersReady = essential && configuredChannels().length > 0;
 
   return Response.json({
-    ok: essential,
+    ok: essential && !exposed,
+    ...(exposed
+      ? {
+          WARNING:
+            "APP_PASSWORD is not set. Anyone with this URL can read and " +
+            "delete everything Kayv remembers. Set it and redeploy.",
+        }
+      : {}),
     assistant: env.assistantName,
     timezone: env.timezone,
     model: env.geminiModel,
