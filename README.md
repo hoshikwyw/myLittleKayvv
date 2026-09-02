@@ -68,7 +68,9 @@ DATABASE_URL=postgresql://postgres:devpass@localhost:55432/kayv
 
 **In production**, use [Neon](https://neon.com) — step-by-step instructions in
 **[SETUP-NEON.md](SETUP-NEON.md)**, and the whole free deployment in
-**[SETUP-DEPLOY.md](SETUP-DEPLOY.md)**.
+**[SETUP-DEPLOY.md](SETUP-DEPLOY.md)**. Model keys are in
+**[SETUP-MODELS.md](SETUP-MODELS.md)**, and the calendar in
+**[SETUP-CALENDAR.md](SETUP-CALENDAR.md)**.
 
 The app picks its driver from the URL: Neon's HTTP driver for Neon, plain
 node-postgres for anything else. Same schema, same SQL.
