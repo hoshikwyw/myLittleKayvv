@@ -5,6 +5,7 @@ import { createPlanTools } from "@/lib/tools/plan-tools";
 import { findPlaces } from "@/lib/tools/places";
 import { searchWeb } from "@/lib/tools/search";
 import { readCalendar } from "@/lib/tools/calendar";
+import { sendToPhone } from "@/lib/tools/push";
 import { weatherAt } from "@/lib/tools/weather";
 import { configured } from "@/lib/env";
 
@@ -38,6 +39,9 @@ export function buildToolRegistry(log: MemoryWriteLog): ToolRegistry {
   // Each external tool appears only once its credentials exist. Offering a tool
   // that always fails teaches the model to stop reaching for it.
   if (configured.calendar()) registry.register(readCalendar);
+
+  // No keyless way to reach a phone, so this one really does depend on a key.
+  if (configured.telegram()) registry.register(sendToPhone);
 
   return registry;
 }
