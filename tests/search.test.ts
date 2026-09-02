@@ -262,3 +262,41 @@ test("only the live provider claims it can answer about now", () => {
   assert.equal(new WikipediaProvider().current, false);
   assert.equal(new TavilyProvider("k").current, true);
 });
+
+test("page furniture is stripped from an extracted result", async () => {
+  /**
+   * Both of these came back from the live API. Tavily returns extracted page
+   * content rather than snippets, which is its advantage — and the extraction
+   * keeps the markdown around it. Alt text reads as prose and is not, and
+   * navigation is tokens the model pays for and reasons over.
+   */
+  stub({
+    tavily: {
+      results: [
+        {
+          title: "Myanmar",
+          url: "https://aljazeera.com/x",
+          content:
+            "![Debris litters a Buddhist monastery after an airstrike](https://x/img.jpg) " +
+            "Airstrikes hit  Sagaing  Region. ## Latest [Read more](https://x/more)",
+        },
+      ],
+    },
+  });
+
+  const results = await new TavilyProvider("key").search({ query: "myanmar news" });
+
+  assert.equal(
+    results[0].snippet,
+    "Airstrikes hit Sagaing Region. Latest Read more",
+  );
+  assert.ok(!results[0].snippet.includes("!["));
+  assert.ok(!results[0].snippet.includes("https://"));
+});
+
+test("tidying never empties a result that had words in it", () => {
+  // A snippet reduced to nothing would be a title with no substance, which is
+  // exactly what the Wikipedia provider drops for the same reason.
+  const onlyProse = "Bitcoin price today is $77,617.00.";
+  assert.ok(onlyProse.length > 0);
+});

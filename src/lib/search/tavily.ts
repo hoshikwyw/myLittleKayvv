@@ -26,6 +26,27 @@ interface TavilyResponse {
   error?: string;
 }
 
+/**
+ * Page furniture, removed.
+ *
+ * Tavily returns extracted content rather than snippets, which is its whole
+ * advantage — and the extraction keeps the markdown around it. A live result
+ * arrived as "![Debris litters a Buddhist monastery after an airstrike...",
+ * and another as "$126,080.00 Buy Bitcoin ## Bitcoin price today". Alt text
+ * and navigation are tokens the model pays for and reasons over.
+ */
+function tidy(content: string): string {
+  return content
+    // Images: the alt text reads as prose and is not.
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    // Links: keep what was written, drop where it pointed.
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    // Heading marks, which survive extraction as stray hashes mid-sentence.
+    .replace(/#{1,6}\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** "en.wikipedia.org" from a URL, for saying where something came from. */
 function hostOf(url: string): string {
   try {
@@ -73,7 +94,7 @@ export class TavilyProvider implements SearchProvider {
         .map((r) => ({
           title: r.title,
           url: r.url,
-          snippet: (r.content ?? "").trim(),
+          snippet: tidy(r.content ?? ""),
           source: hostOf(r.url),
         }));
 
