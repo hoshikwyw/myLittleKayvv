@@ -25,7 +25,9 @@
       "Bash(python -m http.server 5180 --bind 127.0.0.1)",
       "WebFetch(domain:capawesome.io)",
       "WebFetch(domain:forum.ionicframework.com)",
-      "Bash(node --import tsx --test tests/*.test.ts)"
+      "Bash(node --import tsx --test tests/*.test.ts)",
+      "Bash(grep -v \"^\\\\s*\\\\*\\\\|/\\\\*\\\\*\")",
+      "Bash(node --import tsx --test tests/native-voice.test.ts)"
     ]
   }
 }

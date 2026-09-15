@@ -4,6 +4,8 @@ import type {
   VoiceAdapter,
   VoiceCapabilities,
 } from "./types";
+import { isNativeShell } from "@/lib/native/platform";
+import { loadCapacitorSpeech, NativeVoiceAdapter } from "./native";
 
 /** Frozen so the server snapshot is referentially stable across renders. */
 export const NO_CAPABILITIES: VoiceCapabilities = Object.freeze({
@@ -182,7 +184,18 @@ export class BrowserVoiceAdapter implements VoiceAdapter {
 
 let adapter: VoiceAdapter | undefined;
 
+/**
+ * The Android app's own speech when running inside it, the browser's
+ * everywhere else.
+ *
+ * Not cached on the server, where there is no window to decide by: a browser
+ * adapter remembered there would be the answer for a phone too.
+ */
 export function getVoiceAdapter(): VoiceAdapter {
-  adapter ??= new BrowserVoiceAdapter();
+  if (typeof window === "undefined") return new BrowserVoiceAdapter();
+
+  adapter ??= isNativeShell()
+    ? new NativeVoiceAdapter(loadCapacitorSpeech)
+    : new BrowserVoiceAdapter();
   return adapter;
 }
