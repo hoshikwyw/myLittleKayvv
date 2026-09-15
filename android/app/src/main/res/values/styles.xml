@@ -17,6 +17,12 @@
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <!-- Android 7 to 11 show this image. -->
         <item name="android:background">@drawable/splash</item>
+        <!-- Android 12 and later draw their own splash from these two instead:
+             the reactor on the HUD's ground, rather than the launcher icon on
+             white. -->
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
     </style>
 </resources>

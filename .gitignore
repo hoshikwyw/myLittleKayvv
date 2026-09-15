@@ -50,3 +50,12 @@ next-env.d.ts
 # Every secret in one file, for pasting into a hosting dashboard. Never
 # committed, and worth deleting once it has been used.
 vercel-env.txt
+
+# The Android signing key and its passwords. Losing the key means the app can
+# never be updated in place again, so it is backed up — but never committed.
+*.jks
+*.keystore
+keystore.properties
+
+# Built apps, copied out of Gradle's build folder to be shared.
+/release

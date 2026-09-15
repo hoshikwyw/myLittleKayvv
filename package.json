@@ -19,7 +19,9 @@
     "db:migrate:url": "node scripts/migrate.mjs",
     "telegram": "tsx scripts/telegram.ts",
     "calendar:connect": "tsx scripts/google-calendar.ts",
-    "mobile:sync": "cap sync android"
+    "mobile:sync": "cap sync android",
+    "mobile:assets": "node scripts/android-assets.mjs",
+    "mobile:apk": "node scripts/build-apk.mjs"
   },
   "dependencies": {
     "@capacitor-community/speech-recognition": "^7.0.1",

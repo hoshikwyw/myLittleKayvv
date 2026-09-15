@@ -27,7 +27,12 @@
       "WebFetch(domain:forum.ionicframework.com)",
       "Bash(node --import tsx --test tests/*.test.ts)",
       "Bash(grep -v \"^\\\\s*\\\\*\\\\|/\\\\*\\\\*\")",
-      "Bash(node --import tsx --test tests/native-voice.test.ts)"
+      "Bash(node --import tsx --test tests/native-voice.test.ts)",
+      "Bash(node -e \"const s=require\\('sharp'\\);console.log\\(s.versions\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(cd /c/Users/Khaing/Projects/MyLittleKayv/android/app/src/main/res && cat mipmap-anydpi-v26/ic_launcher_round.xml && cat values/strings.xml && grep -rn \"colorPrimary\" --include=*.xml . ../../../../capacitor-cordova-android-plugins 2>/dev/null | head -3; grep -rn \"windowSplashScreen\\\\|postSplashScreenTheme\\\\|installSplashScreen\" ../../../../../node_modules/@capacitor/android/capacitor/src/main 2>/dev/null | head)",
+      "Read(//c//**)",
+      "Read(//c/node_modules/@capacitor/android/capacitor/src/**)"
     ]
   }
 }

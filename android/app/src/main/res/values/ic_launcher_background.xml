@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- The bg token in src/app/globals.css -->
+    <color name="ic_launcher_background">#04070D</color>
 </resources>
