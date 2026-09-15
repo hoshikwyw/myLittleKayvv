@@ -11,7 +11,14 @@
       "Bash(seq 1 30)",
       "Bash(echo \"local postgres ready\")",
       "Bash(break)",
-      "Bash(npm test *)"
+      "Bash(npm test *)",
+      "Bash(awk -F= '{ printf \"  %-40s %s\\\\n\", $1, \\(length\\($2\\)==0 ? \"EMPTY\" : \"set \\(\" length\\($2\\) \" chars\\)\"\\) }')",
+      "Bash(awk '{print \"  last written:\", $6, substr\\($7,1,8\\)}')",
+      "Bash(grep -v \"^\\\\s*--$\")",
+      "Bash(curl -s -c __TRACKED_VAR__/prod2.txt --max-time 30 -X POST https://my-little-kayvv.vercel.app/api/login -H 'Content-Type: application/json' -d '{\"password\":\"prism-rowan-cobalt-zephyr-domino-orchid\"}' -w 'login %{http_code}\\\\n' -o /dev/null)",
+      "Bash(curl -s -b __TRACKED_VAR__/prod2.txt --max-time 40 https://my-little-kayvv.vercel.app/ -o __TRACKED_VAR__/prod.html)",
+      "Bash(python - __TRACKED_VAR__/prod.html)",
+      "Bash(python - \"C:/Users/Khaing/AppData/Local/Temp/claude/c--Users-Khaing-Projects-MyLittleKayv/f43f439d-6528-42e1-92bf-c5d900b08146/scratchpad/prod.html\")"
     ]
   }
 }
