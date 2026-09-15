@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Kayv</string>
+    <string name="title_activity_main">Kayv</string>
+    <string name="package_name">com.mylittlekayv.app</string>
+    <string name="custom_url_scheme">com.mylittlekayv.app</string>
+</resources>

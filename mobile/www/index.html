@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kayv</title>
+    <!--
+      Capacitor requires an index.html in webDir, and bundles it into the APK.
+
+      It is normally never shown: capacitor.config.ts points the shell at the
+      live deployment. It exists so that if that setting were ever removed, the
+      app would still find its way to the right place rather than opening on an
+      empty page.
+    -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #04070d;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      fetch("app-url.json", { cache: "no-store" })
+        .then((response) => response.json())
+        .then(({ url }) => window.location.replace(url))
+        .catch(() => window.location.replace("offline.html"));
+    </script>
+  </body>
+</html>
