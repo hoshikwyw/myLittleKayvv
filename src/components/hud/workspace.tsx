@@ -38,6 +38,7 @@ import { distanceKm } from "@/lib/map/distance";
 import { viewFor, stepForDistance, WORLD_STEP } from "./map-zoom";
 import { useStreets } from "@/hooks/use-streets";
 import { useModelChoice } from "@/hooks/use-model-choice";
+import { useBackToClose, useNativeBackButton } from "@/hooks/use-back-button";
 
 import type { WorldPaths } from "@/lib/map/world";
 import type { MemoryOverview } from "@/lib/memory/overview";
@@ -274,6 +275,13 @@ export function HudWorkspace({
     return () => document.removeEventListener("keydown", onKey);
   }, [maximised, setPanel]);
 
+  // On Android, back does what Escape does here: leaves full screen first,
+  // and only minimises the app when there is nothing left to close.
+  useNativeBackButton();
+  useBackToClose(Boolean(maximised), () => {
+    if (maximised) setPanel(maximised.id, "open");
+  });
+
   function body(id: PanelId) {
     switch (id) {
       case "chat":
@@ -454,8 +462,12 @@ export function HudWorkspace({
         viewport would be about eighty pixels each, which is not a layout, it
         is a list of title bars. Horizontal overflow is prevented at every
         width; vertical is only prevented where the result is still usable.
+
+        The padding adds the phone's own bars to the usual gutter, so on
+        Android nothing sits under the status bar or the camera cutout. On a
+        desktop the safe-area tokens are zero and this is plain `p-3`.
       */}
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto p-3 lg:grid lg:grid-cols-[21rem_minmax(0,1fr)_21rem] lg:items-stretch lg:overflow-hidden">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto pt-[calc(0.75rem+var(--safe-top))] pr-[calc(0.75rem+var(--safe-right))] pb-3 pl-[calc(0.75rem+var(--safe-left))] lg:grid lg:grid-cols-[21rem_minmax(0,1fr)_21rem] lg:items-stretch lg:overflow-hidden">
         <div className="flex min-h-0 flex-col gap-3">{column("left")}</div>
 
         {/*
@@ -514,8 +526,10 @@ export function HudWorkspace({
           document.body,
         )}
 
-      {/* The dock. Everything the header used to hold lives here. */}
-      <div className="glass border-border relative z-20 shrink-0 border-t">
+      {/* The dock. Everything the header used to hold lives here.
+          Its glass runs to the bottom edge, under the gesture bar; its buttons
+          stop above it, where a thumb swiping home will not press them. */}
+      <div className="glass border-border relative z-20 shrink-0 border-t pr-(--safe-right) pb-(--safe-bottom) pl-(--safe-left)">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-1 px-3 py-2">
           <span className="text-accent mr-2 hidden font-mono text-xs font-semibold tracking-[0.25em] uppercase sm:block">
             {assistantName}

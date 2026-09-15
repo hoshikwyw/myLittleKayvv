@@ -63,7 +63,7 @@ function LoginForm() {
   }
 
   return (
-    <main className="grid min-h-dvh place-items-center p-6">
+    <main className="grid min-h-dvh place-items-center px-6 pt-[calc(1.5rem+var(--safe-top))] pb-[calc(1.5rem+var(--safe-bottom))]">
       <form
         onSubmit={submit}
         className="hud-frame glass relative flex w-full max-w-sm flex-col gap-4 rounded-sm border p-6"

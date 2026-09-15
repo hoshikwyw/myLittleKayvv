@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { History, Loader2, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBackToClose } from "@/hooks/use-back-button";
 
 /**
  * Past conversations.
@@ -76,6 +77,9 @@ export function ConversationHistory({
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  // Android's back button closes the list, like Escape.
+  useBackToClose(open, () => setOpen(false));
 
   async function remove(id: string) {
     setThreads((prev) => prev.filter((t) => t.id !== id));

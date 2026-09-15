@@ -52,6 +52,20 @@
   /* the technical grid the whole thing sits on */
   --grid-line: rgb(34 211 238 / 0.045);
   --grid-size: 44px;
+
+  /*
+   * What the phone's own bars cover: the status bar and camera cutout above,
+   * the gesture bar below, and the sides when a phone is on its side.
+   *
+   * Capacitor's SystemBars reports these as `--safe-area-inset-*`, because the
+   * Android WebView got `env(safe-area-inset-*)` wrong before version 140. The
+   * `env()` fallback serves a browser, and zero serves everything else — on a
+   * desktop all four are nothing, so none of this moves a pixel there.
+   */
+  --safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
 }
 
 /*

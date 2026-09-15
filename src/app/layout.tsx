@@ -27,9 +27,27 @@ export const metadata: Metadata = {
  */
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f4f6f9" },
-    { media: "(prefers-color-scheme: dark)", color: "#080b11" },
+    { media: "(prefers-color-scheme: light)", color: "#eef4f8" },
+    { media: "(prefers-color-scheme: dark)", color: "#04070d" },
   ],
+
+  /*
+   * Draw under the status bar and the gesture bar, as the Android app must.
+   *
+   * Android 15 makes every app edge-to-edge whether it asks or not, so the
+   * choice is only between the page knowing it and the page being covered.
+   * With `cover`, the insets are reported to CSS and the workspace pads itself
+   * clear of them — see the `--safe-*` tokens in globals.css.
+   */
+  viewportFit: "cover",
+
+  /*
+   * When the keyboard opens, shrink the page rather than sliding the keyboard
+   * over it. The workspace is a fixed-height column with the message box at
+   * the bottom of its panel; overlaid, the box you are typing into is the thing
+   * the keyboard hides.
+   */
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

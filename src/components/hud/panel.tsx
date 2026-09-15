@@ -54,9 +54,10 @@ export function HudPanel({
         // Full window, edge to edge. The panel is glass, so what it covers
         // stays visible and blurred behind it. `relative` is only applied when
         // it is not fixed — hud-frame no longer sets position for exactly this
-        // reason.
+        // reason. The safe-area padding keeps its header below the status bar
+        // and its contents above the gesture bar on a phone; elsewhere it is 0.
         maximised
-          ? "fixed inset-0 z-50 rounded-none border-x-0 border-b-0"
+          ? "fixed inset-0 z-50 rounded-none border-x-0 border-b-0 pt-(--safe-top) pr-(--safe-right) pb-(--safe-bottom) pl-(--safe-left)"
           : "relative max-h-full",
         className,
       )}
