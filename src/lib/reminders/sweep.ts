@@ -13,8 +13,8 @@ import {
 } from "@/lib/memory/calendar";
 import { notify } from "@/lib/notify";
 import { contextForPeople, contextLines } from "./context";
-import { asRecurring } from "@/lib/memory/plans";
-import { describeRecurrence, planOccursOn } from "@/lib/memory/recurrence";
+import type { Recurrence } from "@/lib/memory/recurrence";
+import { DIGEST_HOUR, selectDuePlans, wallClock } from "./plans";
 
 /**
  * The daily reminder sweep.
@@ -207,7 +207,17 @@ export async function runReminderSweep(
       ),
     );
 
-  const { due, skipped } = selectDueDates(
+  /*
+   * The morning digest waits for the morning.
+   *
+   * The sweep runs through the day now, so without this a birthday would be
+   * announced at a minute past midnight — and dates are marked as sent, so the
+   * first run of the day is the only one that would ever say it.
+   */
+  const digestOpen = wallClock(now, timezone).hour >= DIGEST_HOUR;
+
+  const { due, skipped } = digestOpen
+    ? selectDueDates(
     dateRows.map(({ date, personName, personNickname }) => ({
       id: date.id,
       label: date.label,
@@ -224,13 +234,13 @@ export async function runReminderSweep(
     today,
     todayIso,
     daysAwayFor,
-  );
+  )
+    : { due: [] as DueReminder[], skipped: 0 };
 
   const firedDateIds = due.map((d) => d.id);
-  let skippedPlans = 0;
 
-  /**
-   * Plans landing today.
+  /*
+   * Plans, which are now two different reminders.
    *
    * Filtered in JavaScript rather than by a date window: a repeating plan's
    * next occurrence is not a stored timestamp — "every Tuesday" has no row for
@@ -243,41 +253,31 @@ export async function runReminderSweep(
     .where(eq(plans.status, "pending"))
     .limit(200);
 
-  const firedPlanIds: string[] = [];
-
-  for (const plan of planRows) {
-    const recurring = asRecurring(plan);
-    if (!recurring) continue;
-    if (!planOccursOn(recurring, today)) continue;
-
-    // Same once-per-day guard as dates. A one-off only ever falls due on its
-    // own day, so "once per day" and "once ever" mean the same thing for it.
-    if (plan.lastNotifiedOn === todayIso) {
-      skippedPlans++;
-      continue;
-    }
-
-    const at = plan.allDay
-      ? "today"
-      : `today at ${new Intl.DateTimeFormat("en-GB", {
-          timeZone: timezone,
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        }).format(plan.startsAt!)}`;
-
-    const repeats = describeRecurrence(recurring);
-
-    due.push({
-      kind: "plan",
+  const selection = selectDuePlans(
+    planRows.map((plan) => ({
       id: plan.id,
-      daysAway: 0,
-      line: `${plan.title} — ${at}${plan.location ? `, ${plan.location}` : ""}${
-        repeats ? ` (${repeats})` : ""
-      }.`,
-    });
-    firedPlanIds.push(plan.id);
+      title: plan.title,
+      location: plan.location,
+      startsAt: plan.startsAt,
+      allDay: plan.allDay,
+      recurrence: plan.recurrence as Recurrence,
+      recurrenceDays: plan.recurrenceDays ?? [],
+      lastNotifiedOn: plan.lastNotifiedOn,
+    })),
+    now,
+    timezone,
+  );
+
+  for (const plan of selection.allDay) {
+    due.push({ kind: "plan", id: plan.id, daysAway: 0, line: plan.line });
   }
+
+  const timedDue: DueReminder[] = selection.timed.map((plan) => ({
+    kind: "plan",
+    id: plan.id,
+    daysAway: 0,
+    line: plan.line,
+  }));
 
   // What we know about the people whose dates are due. Looked up after
   // selection so it costs nothing on the days nothing is due.
@@ -298,42 +298,95 @@ export async function runReminderSweep(
   const result: SweepResult = {
     today: todayIso,
     timezone,
-    due: due.sort((a, b) => a.daysAway - b.daysAway),
-    skipped: skipped + skippedPlans,
+    // The alerts first: something starting in ten minutes is more urgent than
+    // a birthday next week.
+    due: [...timedDue, ...due.sort((a, b) => a.daysAway - b.daysAway)],
+    skipped: skipped + selection.skipped,
     delivered: false,
     channels: [],
     errors: [],
   };
 
-  if (due.length === 0 || dryRun) return result;
+  if (result.due.length === 0 || dryRun) return result;
 
-  const subject =
-    due.length === 1 ? "A reminder" : `${due.length} things coming up`;
-  const body = due
-    .map((d) => {
-      const lines = [`• ${d.line}`];
-      // Indented beneath the date, so a reminder still reads as one thing
-      // rather than a list of unrelated facts.
-      for (const extra of d.context ?? []) lines.push(`   ${extra}`);
-      return lines.join("\n");
-    })
-    .join("\n\n");
+  /*
+   * Two messages, not one.
+   *
+   * A timed alert and a morning digest are different things to receive. Folded
+   * together, "Study starts in ten minutes" would sit under a heading about
+   * things coming up this week and read as one more line in a list.
+   */
+  const outcomes: Array<{ delivered: boolean; ok: string[]; failed: string[] }> =
+    [];
 
-  const outcome = await notify({ subject, body });
+  if (timedDue.length > 0) {
+    const sent = await notify({
+      subject:
+        timedDue.length === 1
+          ? `Starting soon: ${selection.timed[0].line.split(" — ")[0]}`
+          : `${timedDue.length} things starting soon`,
+      body: timedDue.map((d) => `• ${d.line}`).join("\n"),
+    });
 
-  result.delivered = outcome.delivered;
-  result.channels = outcome.attempts.filter((a) => a.ok).map((a) => a.channel);
-  result.errors = outcome.attempts
-    .filter((a) => !a.ok)
-    .map((a) => `${a.channel}: ${a.error}`);
+    outcomes.push(summarise(sent));
 
-  // Only mark as notified once something actually went out. Marking on failure
-  // would lose the reminder entirely, which is the one outcome worth avoiding.
-  if (outcome.delivered) {
-    await markNotified(firedDateIds, firedPlanIds, todayIso);
+    // Marked per occurrence, not with today's date: a plan reminded at 23:50
+    // for 00:05 belongs to tomorrow, and marking today would send it again.
+    if (sent.delivered) {
+      const byDay = new Map<string, string[]>();
+      for (const plan of selection.timed) {
+        byDay.set(plan.occurrenceIso, [
+          ...(byDay.get(plan.occurrenceIso) ?? []),
+          plan.id,
+        ]);
+      }
+      for (const [day, ids] of byDay) await markNotified([], ids, day);
+    }
   }
 
+  if (due.length > 0) {
+    const sent = await notify({
+      subject: due.length === 1 ? "A reminder" : `${due.length} things coming up`,
+      body: due
+        .map((d) => {
+          const lines = [`• ${d.line}`];
+          // Indented beneath the date, so a reminder still reads as one thing
+          // rather than a list of unrelated facts.
+          for (const extra of d.context ?? []) lines.push(`   ${extra}`);
+          return lines.join("\n");
+        })
+        .join("\n\n"),
+    });
+
+    outcomes.push(summarise(sent));
+
+    // Only mark as notified once something actually went out. Marking on
+    // failure would lose the reminder entirely, which is the one outcome worth
+    // avoiding.
+    if (sent.delivered) {
+      await markNotified(
+        firedDateIds,
+        selection.allDay.map((p) => p.id),
+        todayIso,
+      );
+    }
+  }
+
+  result.delivered = outcomes.every((o) => o.delivered);
+  result.channels = [...new Set(outcomes.flatMap((o) => o.ok))];
+  result.errors = outcomes.flatMap((o) => o.failed);
+
   return result;
+}
+
+function summarise(outcome: Awaited<ReturnType<typeof notify>>) {
+  return {
+    delivered: outcome.delivered,
+    ok: outcome.attempts.filter((a) => a.ok).map((a) => a.channel),
+    failed: outcome.attempts
+      .filter((a) => !a.ok)
+      .map((a) => `${a.channel}: ${a.error}`),
+  };
 }
 
 /**

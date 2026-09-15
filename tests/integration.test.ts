@@ -611,10 +611,18 @@ describe("memory against real Postgres", () => {
     assert.equal(again.skipped, 2);
   });
 
-  dbTest("repeating plans come round and stay once-per-day", async () => {
+  dbTest("repeating plans come round near their time, once per occurrence", async () => {
     await reset(db);
-    const sat = new Date("2026-08-29T06:00:00Z"); // Saturday
-    const sun = new Date("2026-08-30T06:00:00Z");
+    /*
+     * This test used to assert that a plan at 21:00 was due at 12:30 — which
+     * was the bug. A timed plan was mentioned whenever the day's only sweep
+     * ran, hours early, and never at all if it was added after that sweep.
+     *
+     * 21:00 in Yangon is 14:30 UTC, so 14:20 UTC is ten minutes before it.
+     */
+    const satEvening = new Date("2026-08-29T14:20:00Z"); // Saturday
+    const sunMidday = new Date("2026-08-30T06:00:00Z");
+    const sunEvening = new Date("2026-08-30T14:20:00Z");
 
     await addPlan({
       title: "Take medicine",
@@ -629,28 +637,32 @@ describe("memory against real Postgres", () => {
       recurrenceDays: [0], // Sundays
     });
 
-    // Saturday: only the daily one.
-    const saturday = await runReminderSweep(sat, { dryRun: true });
+    // Saturday evening: the medicine, ten minutes before it is due.
+    const saturday = await runReminderSweep(satEvening, { dryRun: true });
     assert.deepEqual(
       saturday.due.map((d) => d.line.split(" —")[0]),
       ["Take medicine"],
     );
     assert.match(saturday.due[0].line, /every day/);
+    assert.match(saturday.due[0].line, /in 10 minutes/);
 
-    // Sunday: both.
-    const sunday = await runReminderSweep(sun, { dryRun: true });
-    assert.equal(sunday.due.length, 2);
-    assert.ok(sunday.due.some((d) => d.line.startsWith("Call mum")));
+    // Sunday midday: the all-day call goes in the digest, and the evening
+    // medicine is not announced eight hours early.
+    const midday = await runReminderSweep(sunMidday, { dryRun: true });
+    assert.deepEqual(
+      midday.due.map((d) => d.line.split(" —")[0]),
+      ["Call mum"],
+    );
 
-    // Marked as sent, Saturday goes quiet.
+    // Marked as sent, Saturday evening goes quiet.
     await markNotified([], saturday.due.map((d) => d.id), "2026-08-29");
-    const again = await runReminderSweep(sat, { dryRun: true });
+    const again = await runReminderSweep(satEvening, { dryRun: true });
     assert.equal(again.due.length, 0);
     assert.equal(again.skipped, 1);
 
-    // But it comes back the next day — that is the point of a repeat.
-    const nextDay = await runReminderSweep(sun, { dryRun: true });
-    assert.ok(nextDay.due.some((d) => d.line.startsWith("Take medicine")));
+    // But it comes back the next evening — that is the point of a repeat.
+    const nextEvening = await runReminderSweep(sunEvening, { dryRun: true });
+    assert.ok(nextEvening.due.some((d) => d.line.startsWith("Take medicine")));
   });
 
   dbTest("a repeat with no date given is anchored to today", async () => {
@@ -668,9 +680,41 @@ describe("memory against real Postgres", () => {
     assert.equal(medicine?.repeats, "every day");
     assert.match(medicine!.when!, /21:00/);
 
-    // And it actually fires.
-    const swept = await runReminderSweep(sat, { dryRun: true });
+    // And it actually fires — that evening, near 21:00 (14:30 UTC).
+    const evening = new Date("2026-08-29T14:20:00Z");
+    const swept = await runReminderSweep(evening, { dryRun: true });
     assert.ok(swept.due.some((d) => d.line.startsWith("Take medicine")));
+  });
+
+  dbTest("a timed plan added after the morning sweep is still reminded", async () => {
+    await reset(db);
+    /*
+     * The reported bug, against the real database. Both plans were created at
+     * 11:58 on the 14th — hours after that morning's only sweep — and never
+     * sent: by the next morning they were yesterday's.
+     */
+    const createdAt = new Date("2026-09-14T05:28:00Z"); // 11:58 in Yangon
+
+    await addPlan({ title: "Study", date: "2026-09-14", time: "19:30" }, createdAt);
+    await addPlan({ title: "Go to bed", date: "2026-09-14", time: "23:00" }, createdAt);
+
+    // 19:20 in Yangon.
+    const beforeStudy = await runReminderSweep(new Date("2026-09-14T12:50:00Z"), {
+      dryRun: true,
+    });
+    assert.deepEqual(
+      beforeStudy.due.map((d) => d.line.split(" —")[0]),
+      ["Study"],
+    );
+
+    // 22:50 in Yangon.
+    const beforeBed = await runReminderSweep(new Date("2026-09-14T16:20:00Z"), {
+      dryRun: true,
+    });
+    assert.deepEqual(
+      beforeBed.due.map((d) => d.line.split(" —")[0]),
+      ["Go to bed"],
+    );
   });
 
   dbTest("a repeating plan is listed on the day it next lands", async () => {

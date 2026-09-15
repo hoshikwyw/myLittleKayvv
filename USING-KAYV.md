@@ -100,16 +100,23 @@ chased; use the calendar for things you keep there anyway.
 
 ## Reminders reaching you
 
-Every morning Kayv sends one Telegram message with what is coming — birthdays
-inside their warning window, plans due, anniversaries.
+Two kinds of Telegram message, because they are two different things.
 
-Vercel's free tier allows one scheduled run a day, so it is a **morning digest
-rather than an alarm at the moment something is due**. A plan at 21:00 is
-mentioned that morning, not at nine in the evening. That is a deliberate
-choice: a reminder arriving at the wrong time is worse than one arriving as a
-digest.
+**A plan with a time is reminded near that time** — somewhere between fifteen
+minutes before and the moment it starts:
 
-The daily run happens at **06:30 Yangon time**.
+> Starting soon: Study — 19:30, in 12 minutes.
+
+It does not matter when you added it. A plan made at noon for that evening is
+reminded that evening. If something delays a run, the reminder still comes up
+to half an hour late; after that the plan is over and nothing is sent.
+
+**Everything else goes in a morning digest** from 06:00 — birthdays inside
+their warning window, anniversaries, and plans with a day but no time.
+
+This depends on the sweep running every fifteen minutes, which needs the
+cron-job.org step in [SETUP-DEPLOY.md](SETUP-DEPLOY.md). Without it, only the
+morning digest arrives.
 
 ---
 

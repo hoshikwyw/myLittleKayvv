@@ -175,12 +175,57 @@ Telegram. Vercel's own daily run happens at 00:00 UTC — 06:30 in Yangon.
 
 ---
 
+## 6. Run the reminders through the day
+
+**Without this step, a plan at 19:30 is never reminded at 19:30.** Vercel's
+free cron runs once a day, which is enough for birthdays and nothing else. A
+timed reminder needs the sweep called every fifteen minutes, and
+[cron-job.org](https://cron-job.org) does that for free, with no card.
+
+1. Sign up at **[cron-job.org](https://cron-job.org)**.
+2. **Create cronjob**.
+3. **URL:**
+
+   ```
+   https://<your-app>.vercel.app/api/cron/reminders
+   ```
+
+4. **Execution schedule:** every **15 minutes**.
+5. Open **Advanced → Headers** and add one:
+
+   | Key | Value |
+   |---|---|
+   | `Authorization` | `Bearer <CRON_SECRET>` |
+
+   Use the `CRON_SECRET` **from Vercel**, not from `.env.local` — if the two
+   differ, this one must match Vercel's, or every run is refused with a 401.
+6. **Save**, then press **Test run**. You want status **200** and a body
+   containing `"ok":true`. A **401** means the header is wrong.
+
+**Why fifteen minutes and not every minute.** Neon's free tier gives 100
+compute-hours a month, and the database stays awake for five minutes after
+each query before it sleeps again. A run every minute would never let it
+sleep, and that alone would spend the whole month's allowance in about three
+weeks — at which point Neon suspends the database, and the app *and* the
+reminders stop until the month turns. Every fifteen minutes keeps it asleep
+two-thirds of the time, at roughly sixty compute-hours a month.
+
+Fifteen minutes is also exactly enough. A plan is reminded any time from
+fifteen minutes before it starts, so whichever minute it is set for, one run
+always lands inside that window.
+
+**It is safe to leave Vercel's daily cron running too.** Every reminder is
+marked the moment it is delivered, so two schedulers calling the same sweep
+send nothing twice — and if cron-job.org ever stops, the morning digest of
+birthdays still arrives.
+
+---
+
 ## Living inside the free tiers
 
-**Vercel's one-cron-a-day** is why reminders arrive as a morning digest rather
-than at the moment a plan is due. A free external pinger against
-`/api/cron/reminders` would allow hourly; the sweep is idempotent, so extra runs
-are harmless.
+**Vercel's one cron a day** is why the external scheduler in step 6 exists.
+Everything above it would otherwise work; only reminders at a particular time
+depend on something calling the sweep more often than Vercel allows.
 
 **Caches do not survive.** Weather, streets and place lookups are cached in
 process memory, and serverless functions are created and destroyed constantly.

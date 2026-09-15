@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /dev/null -w \"5173 -> %{http_code}\\\\n\" --max-time 4 http://localhost:5173/login)",
+      "Bash(python -c ' *)",
+      "Bash(awk -F= '{ printf \"  %-28s %s\\\\n\", $1, \\(length\\($2\\)==0 ? \"EMPTY\" : \"set\"\\) }')",
+      "Bash(curl -s --max-time 30 -X POST http://localhost:5173/api/login -H \"Content-Type: application/json\" -d '{\"password\":\"prism-rowan-cobalt-zephyr-domino-orchid\"}' -w \" [%{http_code}]\\\\n\")",
+      "Bash(node --import tsx --test tests/plan-reminders.test.ts)",
+      "Bash(cd \"c:/Users/Khaing/Projects/MyLittleKayv\")",
+      "Bash(docker start *)",
+      "Bash(seq 1 30)",
+      "Bash(echo \"local postgres ready\")",
+      "Bash(break)",
+      "Bash(npm test *)"
+    ]
+  }
+}

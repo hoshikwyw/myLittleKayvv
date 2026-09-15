@@ -1307,7 +1307,68 @@ days without database activity** and needs unpausing by hand — for something
 whose job is to remember birthdays unattended, waking itself is worth more than
 the extra storage.
 
-## 34. Open questions
+## 34. Reminding at the time, not at dawn
+
+The owner added "Study" at 19:30 and "Go to bed" at 23:00, and neither reminder
+ever arrived. Nothing had crashed. The sweep ran once a day at 06:30 and asked
+whether each plan *landed today* — a question about the day that ignored the
+time entirely. So a plan at 19:30 could only ever have been mentioned at dawn,
+and these two, created at 11:58, were never mentioned at all: that morning's
+sweep had already run, and by the next one they were yesterday's.
+
+Section 23 had written this down as a deliberate trade — "a reminder that
+arrives at the wrong time is worse than one that arrives as a digest." True,
+and not the whole story. A plan added after the digest went out was not a
+reminder at the wrong time, it was no reminder, and the owner reasonably read
+that as broken.
+
+**Two reminders now, because they answer different questions.** A timed plan
+is reminded near its time, in its own message. An all-day plan has no time to
+be near, so it stays in the morning digest beside the birthdays. The rule is a
+pure function in `lib/reminders/plans.ts`, tested on its own the way the
+date-firing rule is.
+
+**The window is matched to the schedule.** A reminder may arrive up to fifteen
+minutes before a plan starts, and the sweep runs every fifteen minutes, so some
+run always lands inside the window. That is checked for every minute of an
+hour rather than argued. Up to thirty minutes late still sends, so a skipped
+run costs a late reminder rather than a lost one; after that the plan is over.
+
+**Midnight in both directions.** A plan at 00:05 is reminded at 23:50 the day
+before, and one at 23:55 is still inside its grace at 00:10. So the check looks
+at yesterday, today and tomorrow, and the "already sent" mark is the
+*occurrence's* date rather than today's — marking today for a plan that belongs
+to tomorrow would send it a second time once the date rolled over.
+
+**The digest waits for the morning.** With the sweep running all day, a
+birthday would otherwise be announced at a minute past midnight, and since
+dates are marked once sent, that would be the only time it was ever said. From
+06:00 rather than 07:00, so Vercel's own run at 06:30 still counts as a backup.
+
+**Why an outside scheduler, and why fifteen minutes.** Vercel Hobby allows one
+cron a day, so cron-job.org — free, no card, custom headers for the secret —
+calls the endpoint through the day. Every minute was the obvious choice and the
+wrong one: Neon's free tier is 100 compute-hours a month and stays awake five
+minutes after each query, so a run every minute would never let it sleep and
+would exhaust the allowance in about three weeks, suspending the database — and
+with it the app and every reminder — until the month turned. Fifteen minutes
+keeps it asleep two-thirds of the time.
+
+Polling rather than scheduling each reminder as its own delayed message,
+because it keeps Postgres the only thing that knows when a plan is: editing or
+deleting a plan simply works, with nothing elsewhere left to cancel. Principle
+one again — the source of truth for a reminder is the table, not a queue.
+
+**Proven against the real data, carefully.** The local test database would not
+start (Docker's daemon was unresponsive), and the integration tests truncate
+every table, so they were not pointed at Neon — that would have deleted the
+owner's plans. Instead the real sweep was run against Neon in dry-run mode,
+which only reads: at 06:30 on the 14th it found nothing, at 19:20 it found
+"Study — 19:30, in 10 minutes", at 22:50 "Go to bed — 23:00, in 10 minutes".
+Then one real reminder was sent to Telegram for a temporary plan, a second run
+confirmed it was not sent again, and the plan was removed.
+
+## 35. Open questions
 
 - [ ] Exact memory write policy: which fact types auto-save vs. need confirmation
 - [ ] How far back conversation context is replayed into each turn (cost vs. continuity)

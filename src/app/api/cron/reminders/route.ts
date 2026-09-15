@@ -6,14 +6,19 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 /**
- * The daily reminder sweep endpoint.
+ * The reminder sweep endpoint.
  *
- * Vercel Cron calls this once a day with `Authorization: Bearer $CRON_SECRET`.
- * Hobby allows a once-daily schedule in UTC only, and guarantees the hour
- * rather than the minute — which the sweep's idempotency guard is built for.
+ * Called every fifteen minutes by an external scheduler (cron-job.org, see
+ * SETUP-DEPLOY.md) with `Authorization: Bearer $CRON_SECRET`. A timed plan is
+ * reminded near its time, which needs a sweep running through the day.
  *
- * 00:00 UTC lands at 06:30 in Yangon, which is a reasonable hour to be told
- * that someone's birthday is tomorrow.
+ * Vercel Cron still calls it once a day as well. Hobby allows nothing more
+ * frequent, which is why timed reminders need the external scheduler at all —
+ * but at 00:00 UTC, 06:30 in Yangon, it keeps the morning digest of birthdays
+ * going if that scheduler ever stops.
+ *
+ * Every run is safe to repeat: each reminder is marked once it is delivered,
+ * so however many schedulers call this, nothing is sent twice.
  *
  * `?dryRun=1` reports what would be sent without sending or marking anything,
  * so the sweep can be exercised without waiting a day or spending a message.
