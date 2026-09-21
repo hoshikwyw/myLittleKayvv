@@ -59,3 +59,8 @@ keystore.properties
 
 # Built apps, copied out of Gradle's build folder to be shared.
 /release
+
+# Crash reports the JVM writes into its working folder when a Gradle build
+# runs out of memory. Useful for a minute, never worth keeping.
+hs_err_pid*.log
+replay_pid*.log
