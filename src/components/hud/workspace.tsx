@@ -65,19 +65,24 @@ interface PanelMeta {
   icon: typeof Brain;
   /** Where it sits when open, on a screen wide enough to place things. */
   column: "left" | "centre" | "right";
+  /**
+   * Its name in the dock on a phone. Six buttons share about 300 pixels
+   * there, and "Conversation" in spaced capitals needs 90 of them.
+   */
+  short: string;
 }
 
 const PANELS: PanelMeta[] = [
-  { id: "system", title: "System status", icon: Activity, column: "left" },
-  { id: "upcoming", title: "Upcoming", icon: CalendarHeart, column: "left" },
-  { id: "chat", title: "Conversation", icon: MessageSquare, column: "right" },
-  { id: "people", title: "Memory", icon: Brain, column: "right" },
-  { id: "plans", title: "Plans", icon: ListChecks, column: "left" },
+  { id: "system", title: "System status", icon: Activity, column: "left", short: "Status" },
+  { id: "upcoming", title: "Upcoming", icon: CalendarHeart, column: "left", short: "Dates" },
+  { id: "chat", title: "Conversation", icon: MessageSquare, column: "right", short: "Chat" },
+  { id: "people", title: "Memory", icon: Brain, column: "right", short: "Memory" },
+  { id: "plans", title: "Plans", icon: ListChecks, column: "left", short: "Plans" },
   // The centre, not the right column. The map is the only panel that is
   // landscape rather than a list, and the middle is both the widest space and
   // the emptiest — putting it there stops the right column running past the
   // bottom of the window and gives the reactor something to sit above.
-  { id: "map", title: "World", icon: Globe2, column: "centre" },
+  { id: "map", title: "World", icon: Globe2, column: "centre", short: "Map" },
 ];
 
 /** Open on first load: enough to be useful, not so much it is a wall. */
@@ -468,7 +473,18 @@ export function HudWorkspace({
         desktop the safe-area tokens are zero and this is plain `p-3`.
       */}
       <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto pt-[calc(0.75rem+var(--safe-top))] pr-[calc(0.75rem+var(--safe-right))] pb-3 pl-[calc(0.75rem+var(--safe-left))] lg:grid lg:grid-cols-[21rem_minmax(0,1fr)_21rem] lg:items-stretch lg:overflow-hidden">
-        <div className="flex min-h-0 flex-col gap-3">{column("left")}</div>
+        {/*
+          Each column keeps the height of what is in it until `lg`.
+
+          In the stacked layout the columns are items of a scrolling flex
+          column, and flex items shrink by default — so a column was squeezed
+          shorter than its own panels, and they spilled out of it over the top
+          of the next column: the map drawn over "Upcoming", the chat over the
+          weather. `shrink-0` makes them add up instead, and the page scrolls.
+        */}
+        <div className="order-last flex shrink-0 flex-col gap-3 lg:order-none lg:min-h-0 lg:shrink">
+          {column("left")}
+        </div>
 
         {/*
           The reactor, and the world beneath it.
@@ -477,15 +493,15 @@ export function HudWorkspace({
           centred in the whole column exactly as it was before, and opening the
           map slides it up rather than covering it.
         */}
-        <div className="flex min-h-0 flex-col gap-3">
+        <div className="flex shrink-0 flex-col gap-3 lg:min-h-0 lg:shrink">
           {/*
             The reactor takes only what it needs, so the map gets the rest.
-            
+
             Sharing the column evenly gave the map a strip barely taller than
             its own readouts — and it is the panel with something to show,
             while the orb is the same size whatever happens to it.
           */}
-          <div className="grid min-h-0 shrink place-items-center overflow-hidden py-2">
+          <div className="grid shrink-0 place-items-center overflow-hidden py-2 lg:min-h-0 lg:shrink">
             <div className="flex flex-col items-center gap-4">
               <VoiceOrb
                 state={assistant.state}
@@ -498,7 +514,12 @@ export function HudWorkspace({
           {column("centre")}
         </div>
 
-        <div className="flex min-h-0 flex-col gap-3">{column("right")}</div>
+        {/* First on a phone: the conversation is what the app is opened for,
+            and stacked in its desktop place it sat below everything else.
+            Then the reactor and the map; the read-outs go last. */}
+        <div className="order-first flex shrink-0 flex-col gap-3 lg:order-none lg:min-h-0 lg:shrink">
+          {column("right")}
+        </div>
       </div>
 
       {/*
@@ -530,11 +551,22 @@ export function HudWorkspace({
           Its glass runs to the bottom edge, under the gesture bar; its buttons
           stop above it, where a thumb swiping home will not press them. */}
       <div className="glass border-border relative z-20 shrink-0 border-t pr-(--safe-right) pb-(--safe-bottom) pl-(--safe-left)">
-        <div className="mx-auto flex w-full max-w-3xl items-center gap-1 px-3 py-2">
+        {/*
+          One row from `sm`, two below it.
+
+          Six panel buttons and five actions need about 450 pixels in a row,
+          and a phone has 300 to 400 — so the last of them were simply off the
+          edge of the screen. On a phone the panels take the first row and the
+          actions the second. The two groups are wrapped only for that: from
+          `sm` the wrappers are `display: contents`, and the row is exactly what
+          it was before.
+        */}
+        <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-1 px-3 py-2 sm:flex-nowrap">
           <span className="text-accent mr-2 hidden font-mono text-xs font-semibold tracking-[0.25em] uppercase sm:block">
             {assistantName}
           </span>
 
+          <div className="flex w-full min-w-0 gap-1 sm:contents">
           {PANELS.map((panel) => {
             const Icon = panel.icon;
             const open = Boolean(panels[panel.id]);
@@ -548,21 +580,37 @@ export function HudWorkspace({
                 aria-label={panel.title}
                 title={panel.title}
                 className={cn(
-                  "hud-frame relative flex flex-1 flex-col items-center gap-1 rounded-sm border px-2 py-1.5 transition-colors",
+                  // `min-w-0` lets a button be narrower than its label, so six
+                  // share the row evenly rather than the longest pushing the
+                  // rest off it.
+                  "hud-frame relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-sm border px-1 py-1.5 transition-colors sm:px-2",
                   open
                     ? "border-accent/50 text-accent bg-accent-soft/40"
                     : "border-border text-text-faint hover:text-text-muted",
                 )}
               >
-                <Icon className="size-4" />
-                <span className="hud-label !text-[9px] leading-none">
-                  {panel.title.split(" ")[0]}
+                <Icon className="size-4 shrink-0" />
+                <span className="hud-label max-w-full truncate !text-[9px] leading-none !tracking-normal min-[360px]:!tracking-[0.08em] sm:!tracking-[0.22em]">
+                  {/* Short until `lg`: a phone on its side is past `sm` but
+                      still has no room for "Conversation" six times over. */}
+                  <span className="lg:hidden">{panel.short}</span>
+                  <span className="hidden lg:inline">
+                    {panel.title.split(" ")[0]}
+                  </span>
                 </span>
               </button>
             );
           })}
+          </div>
 
-          <span className="bg-border mx-1 h-8 w-px" aria-hidden="true" />
+          <span className="bg-border mx-1 hidden h-8 w-px sm:block" aria-hidden="true" />
+
+          <div className="flex w-full items-center justify-end gap-1 sm:contents">
+          {/* The name has no room beside the panels on a phone, but the
+              second row has room to spare on its left. */}
+          <span className="text-accent mr-auto truncate pl-1 font-mono text-xs font-semibold tracking-[0.25em] uppercase sm:hidden">
+            {assistantName}
+          </span>
 
           {voice.capabilities.listen && (
             <button
@@ -651,6 +699,7 @@ export function HudWorkspace({
               <LogOut className="size-4" />
             </button>
           )}
+          </div>
         </div>
       </div>
     </div>

@@ -91,7 +91,10 @@ export function ConversationHistory({
   }
 
   return (
-    <div className="relative" ref={panelRef}>
+    // Positioned against the dock on a phone rather than this button, which
+    // sits partway along the row: anchored here, the list ran off the left
+    // edge of a narrow screen.
+    <div className="sm:relative" ref={panelRef}>
       <button
         type="button"
         onClick={() => {
@@ -105,15 +108,23 @@ export function ConversationHistory({
         aria-expanded={open}
         title="Past conversations"
         className={cn(
-          "grid size-8 place-items-center rounded-md transition-colors",
-          open ? "text-accent" : "text-text-faint hover:text-text",
+          "grid size-10 shrink-0 place-items-center rounded-sm border transition-colors",
+          open
+            ? "border-accent/50 text-accent"
+            : "border-border text-text-muted hover:text-text",
         )}
       >
         <History className="size-4" />
       </button>
 
+      {/*
+        Opens upward. The button lives in the dock at the bottom of the screen,
+        so a list opening downward was drawn below the window — invisible on
+        every screen size. The width is capped to the screen, less a gutter, so
+        a 320-pixel phone gets the whole list rather than its right half.
+      */}
       {open && (
-        <div className="border-border bg-surface absolute right-0 z-20 mt-2 flex max-h-80 w-72 flex-col overflow-hidden rounded-xl border shadow-lg">
+        <div className="border-border bg-surface absolute right-3 bottom-full z-20 mb-2 sm:right-0 flex max-h-[min(20rem,60dvh)] w-[min(18rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-xl border shadow-lg">
           <div className="border-border flex items-center justify-between border-b px-3 py-2">
             <span className="text-text-muted text-xs font-medium tracking-wide uppercase">
               Conversations
