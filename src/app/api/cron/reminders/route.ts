@@ -1,4 +1,5 @@
-import { configured, env } from "@/lib/env";
+import { configured } from "@/lib/env";
+import { cronAuthorised } from "@/lib/cron-auth";
 import { configuredChannels } from "@/lib/notify";
 import { runReminderSweep } from "@/lib/reminders/sweep";
 
@@ -24,21 +25,10 @@ export const maxDuration = 30;
  * so the sweep can be exercised without waiting a day or spending a message.
  */
 function isAuthorised(request: Request): boolean {
-  const header = request.headers.get("authorization");
-  if (!header) return false;
-
-  const secret = env.cronSecret;
-  const expected = `Bearer ${secret}`;
-
-  // Constant-time-ish: compare lengths first, then every character, so a
-  // wrong secret cannot be narrowed down by timing the response.
-  if (header.length !== expected.length) return false;
-
-  let mismatch = 0;
-  for (let i = 0; i < expected.length; i++) {
-    mismatch |= header.charCodeAt(i) ^ expected.charCodeAt(i);
-  }
-  return mismatch === 0;
+  return cronAuthorised(
+    request.headers.get("authorization"),
+    process.env.CRON_SECRET,
+  );
 }
 
 async function handle(request: Request) {
