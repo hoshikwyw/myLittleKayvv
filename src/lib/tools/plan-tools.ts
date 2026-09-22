@@ -7,6 +7,7 @@ import {
 } from "@/lib/memory/plans";
 import { describeRecurrence } from "@/lib/memory/recurrence";
 import { env } from "@/lib/env";
+import { sweepAfterPlanAdded } from "@/lib/reminders/soon";
 import { defineTool } from "./types";
 import type { MemoryWriteLog } from "./memory-tools";
 
@@ -73,6 +74,10 @@ export function createPlanTools(log: MemoryWriteLog) {
       const repeats = asRecurring(plan)
         ? describeRecurrence(asRecurring(plan)!)
         : null;
+
+      // Something due within the quarter hour would otherwise wait for the
+      // next scheduled sweep, and be reminded late.
+      sweepAfterPlanAdded(Boolean(plan.startsAt) && !plan.allDay);
 
       log.record({
         kind: "plan",

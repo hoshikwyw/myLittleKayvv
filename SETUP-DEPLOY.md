@@ -118,6 +118,7 @@ error; it costs nothing but a minute of thinking something is broken.
 |---|---|
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Reminders reaching your phone. Without a channel, the cron runs and tells nobody. |
 | `TELEGRAM_WEBHOOK_SECRET` | Required for the webhook. Any long random string. |
+| `FIREBASE_SERVICE_ACCOUNT` | Reminders as Android app notifications too. See [SETUP-ANDROID.md](SETUP-ANDROID.md#4-reminders-as-phone-notifications). |
 | `GROQ_API_KEY` | The fallback models. |
 | `TAVILY_API_KEY` | Current news and prices. |
 | `ASSISTANT_NAME`, `OWNER_NAME` | What it calls itself, and you. |

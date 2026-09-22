@@ -72,7 +72,65 @@ If the keyboard does cover the message box, say so — the fix is the
 
 ---
 
-## 4. If voice does not work
+## 4. Reminders as phone notifications
+
+Every reminder goes to **Telegram and the app** at once; email is tried only
+if neither delivers. The app's notification comes through Firebase Cloud
+Messaging, free on Firebase's Spark plan with no card.
+
+### One-time setup
+
+1. [console.firebase.google.com](https://console.firebase.google.com) →
+   **Create a project** (Analytics off).
+2. **Add app → Android**, package name exactly `com.mylittlekayv.app` →
+   download **google-services.json** → put it at `android/app/google-services.json`.
+   It is not a secret and is committed; it tells the app which project it
+   belongs to.
+3. **Project settings → Service accounts → Generate new private key.** This
+   one *is* secret — it can send notifications as the project. Keep it out of
+   the project folder (`*firebase-adminsdk*.json` is gitignored regardless).
+4. Turn it into one line and set it as `FIREBASE_SERVICE_ACCOUNT`, in
+   `.env.local` and in Vercel (Production), then redeploy:
+
+   ```
+   node -e "process.stdout.write(Buffer.from(require('fs').readFileSync('key.json')).toString('base64'))"
+   ```
+
+5. `npm run db:migrate:url` once, for the `devices` table.
+6. Build and install the APK (section 6). Open it, allow notifications.
+
+### Checking it
+
+**System status → "this phone"** says how registration went on the phone, in
+words, with the fix. **"app notifications"** above it only says the server has
+the Firebase key.
+
+| "This phone" says | Do this |
+|---|---|
+| Registered | Nothing. Reminders arrive here. |
+| Notifications are blocked | Settings → Apps → Kayv → Notifications → Allow, then return to Kayv |
+| Could not reach Google's notification service (SERVICE_NOT_AVAILABLE) | The network is blocking Google, or Play services is held back. Try with a VPN on; set Google Play services' battery use to **No restrictions**; update it from the Play Store. Kayv retries on its own and each time you return to it. |
+| Google Play services is missing… | Update or enable Google Play services |
+| The server refused the phone | Sign in again; the session had expired |
+
+On the Redmi Note 14 (HyperOS 3) the first registration needed a VPN: without
+one the network could not reach Firebase. Registration is only needed once per
+install; the token is reused after that.
+
+**Xiaomi / HyperOS:** also set Kayv to **Autostart on** and **Battery saver →
+No restrictions** (Settings → Apps → Kayv). Otherwise HyperOS may hold back
+notifications while the app is closed.
+
+While Kayv is open on screen Android does not pop up its own notifications;
+they appear when it is closed or in the background, which is when a reminder
+matters. Telegram arrives either way.
+
+A phone whose token Firebase reports as gone (app uninstalled, data cleared)
+is removed from the list automatically. Signing out removes this phone too.
+
+---
+
+## 5. If voice does not work
 
 Kayv uses the phone's own speech services, not Chrome's.
 
@@ -87,7 +145,7 @@ Burmese is read on screen but never spoken, as on the web.
 
 ---
 
-## 5. Releasing a new version
+## 6. Releasing a new version
 
 Only needed for native changes (see the top of this page).
 
@@ -107,7 +165,7 @@ in `scripts/android-assets.mjs`.
 
 ---
 
-## 6. The signing key — back it up
+## 7. The signing key — back it up
 
 Two files, both gitignored:
 
