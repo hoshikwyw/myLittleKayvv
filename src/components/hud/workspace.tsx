@@ -39,7 +39,11 @@ import { viewFor, stepForDistance, WORLD_STEP } from "./map-zoom";
 import { useStreets } from "@/hooks/use-streets";
 import { useModelChoice } from "@/hooks/use-model-choice";
 import { useBackToClose, useNativeBackButton } from "@/hooks/use-back-button";
-import { forgetThisPhone, useAppNotifications } from "@/hooks/use-app-notifications";
+import {
+  forgetThisPhone,
+  useAppNotifications,
+  usePhoneNotificationStatus,
+} from "@/hooks/use-app-notifications";
 
 import type { WorldPaths } from "@/lib/map/world";
 import type { MemoryOverview } from "@/lib/memory/overview";
@@ -288,6 +292,7 @@ export function HudWorkspace({
   useNativeBackButton();
   // In the Android app: register this phone for reminder notifications.
   useAppNotifications();
+  const phoneNotifications = usePhoneNotificationStatus();
   useBackToClose(Boolean(maximised), () => {
     if (maximised) setPanel(maximised.id, "open");
   });
@@ -381,6 +386,7 @@ export function HudWorkspace({
             chosenModel={chosenModel}
             onChooseModel={chooseModel}
             answeredBy={assistant.answeredBy}
+            phoneNotifications={phoneNotifications}
           />
         );
     }

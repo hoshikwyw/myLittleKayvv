@@ -6,6 +6,7 @@ import { describeYears } from "@/lib/memory/calendar";
 import { ForgetButton } from "@/components/forget-button";
 import { InlineEdit } from "@/components/inline-edit";
 import { ModelPicker } from "./model-picker";
+import type { PhoneNotificationStatus } from "@/hooks/use-app-notifications";
 
 import type { AnsweringModel, ModelSummary } from "@/types";
 import { cn } from "@/lib/utils";
@@ -230,6 +231,49 @@ export interface SubsystemStatus {
   voice: boolean;
 }
 
+/**
+ * Where notification setup got to on this phone, in the Android app.
+ *
+ * Said in words, with what to do about it, because registration happens out of
+ * sight on the phone — and a failure there otherwise shows up only as a
+ * reminder that never arrives.
+ */
+function PhoneNotifications({ status }: { status: PhoneNotificationStatus }) {
+  const [text, tone] = ((): [string, "ok" | "wait" | "bad"] => {
+    switch (status.step) {
+      case "starting":
+        return ["Setting up…", "wait"];
+      case "registering":
+        return ["Asking Firebase for this phone's address…", "wait"];
+      case "registered":
+        return ["Registered. Reminders will arrive here.", "ok"];
+      case "denied":
+        return [
+          "Notifications are blocked. Settings → Apps → Kayv → Notifications → Allow, then reopen Kayv.",
+          "bad",
+        ];
+      case "failed":
+        return [status.reason, "bad"];
+    }
+  })();
+
+  return (
+    <div className="border-border/60 flex flex-col gap-1 border-t pt-2.5">
+      <span className="hud-label">this phone</span>
+      <p
+        className={cn(
+          "text-xs leading-snug",
+          tone === "ok" && "text-success",
+          tone === "wait" && "text-text-muted",
+          tone === "bad" && "text-warning",
+        )}
+      >
+        {text}
+      </p>
+    </div>
+  );
+}
+
 /** Which subsystems are live. The reference's SYSTEM STATUS panel. */
 export function SystemBody({
   status,
@@ -239,6 +283,7 @@ export function SystemBody({
   chosenModel,
   onChooseModel,
   answeredBy,
+  phoneNotifications = null,
 }: {
   status: SubsystemStatus;
   counts: MemoryOverview["counts"];
@@ -247,6 +292,8 @@ export function SystemBody({
   chosenModel: string | null;
   onChooseModel: (id: string | null) => void;
   answeredBy: AnsweringModel | null;
+  /** How registration went on this phone; null outside the Android app. */
+  phoneNotifications?: PhoneNotificationStatus | null;
 }) {
   const rows: Array<[string, boolean]> = [
     // Named for what it gates rather than for the chat model: embeddings stay
@@ -294,6 +341,8 @@ export function SystemBody({
           </li>
         ))}
       </ul>
+
+      {phoneNotifications && <PhoneNotifications status={phoneNotifications} />}
 
       <div className="border-border/60 grid grid-cols-4 gap-1 border-t pt-2.5">
         {(

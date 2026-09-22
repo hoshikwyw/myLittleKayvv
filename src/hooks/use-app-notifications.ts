@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { isNativeShell } from "@/lib/native/platform";
 
 /**
@@ -11,13 +11,83 @@ import { isNativeShell } from "@/lib/native/platform";
  * start rather than once, because Firebase rotates tokens and the server only
  * ever knows the last one it was told.
  *
+ * Every step reports how it went, and the System panel shows it. Registration
+ * happens on the phone, out of sight of the server — so when it failed, the
+ * only symptom was a reminder that never arrived, with nothing on either side
+ * to say which step had gone wrong.
+ *
  * Nothing here runs in a browser. The plugin is imported lazily for the same
  * reason as the others — it touches `window` as it loads — and so a browser
  * visitor never downloads it at all.
  */
 
+/** Where registration got to on this phone. Null outside the Android app. */
+export type PhoneNotificationStatus =
+  | { step: "starting" }
+  | { step: "denied" }
+  | { step: "registering" }
+  | { step: "failed"; reason: string }
+  | { step: "registered" };
+
+let status: PhoneNotificationStatus | null = null;
+const listeners = new Set<() => void>();
+
+function report(next: PhoneNotificationStatus): void {
+  status = next;
+  for (const listener of listeners) listener();
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+/** How registration went on this phone, for the System panel. */
+export function usePhoneNotificationStatus(): PhoneNotificationStatus | null {
+  return useSyncExternalStore(
+    subscribe,
+    () => status,
+    () => null,
+  );
+}
+
 /** The token this phone registered, so signing out can take it back. */
 let registeredToken: string | null = null;
+
+function messageOf(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return JSON.stringify(error);
+}
+
+async function saveToken(token: string): Promise<void> {
+  try {
+    const response = await fetch("/api/devices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, platform: "android" }),
+    });
+
+    if (!response.ok) {
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      report({
+        step: "failed",
+        reason: `The server refused the phone (${response.status}${data?.error ? `: ${data.error}` : ""}).`,
+      });
+      return;
+    }
+
+    registeredToken = token;
+    report({ step: "registered" });
+  } catch (error) {
+    report({
+      step: "failed",
+      reason: `Could not reach the server: ${messageOf(error)}`,
+    });
+  }
+}
 
 export function useAppNotifications(): void {
   useEffect(() => {
@@ -27,6 +97,8 @@ export function useAppNotifications(): void {
     const handles: Array<{ remove: () => Promise<void> }> = [];
 
     void (async () => {
+      report({ step: "starting" });
+
       const { PushNotifications } = await import("@capacitor/push-notifications");
 
       /*
@@ -46,17 +118,13 @@ export function useAppNotifications(): void {
 
       handles.push(
         await PushNotifications.addListener("registration", ({ value }) => {
-          registeredToken = value;
-          void fetch("/api/devices", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: value, platform: "android" }),
-          }).catch(() => {
-            // Offline right now; the next start registers again.
-          });
+          void saveToken(value);
         }),
         await PushNotifications.addListener("registrationError", (error) => {
-          console.warn("Push registration failed:", error.error);
+          report({
+            step: "failed",
+            reason: `Firebase could not register this phone: ${messageOf(error.error)}`,
+          });
         }),
       );
 
@@ -66,11 +134,16 @@ export function useAppNotifications(): void {
       if (receive === "prompt" || receive === "prompt-with-rationale") {
         ({ receive } = await PushNotifications.requestPermissions());
       }
-      if (cancelled || receive !== "granted") return;
+      if (cancelled) return;
+      if (receive !== "granted") {
+        report({ step: "denied" });
+        return;
+      }
 
+      report({ step: "registering" });
       await PushNotifications.register();
     })().catch((error: unknown) => {
-      console.warn("Could not set up notifications:", error);
+      report({ step: "failed", reason: messageOf(error) });
     });
 
     return () => {
