@@ -6,7 +6,7 @@
  * the next one from being tried.
  */
 
-export type ChannelName = "telegram" | "email" | "in_app";
+export type ChannelName = "telegram" | "email" | "in_app" | "app";
 
 export interface DeliveryResult {
   channel: ChannelName;

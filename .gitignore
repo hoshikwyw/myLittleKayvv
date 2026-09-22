@@ -64,3 +64,6 @@ keystore.properties
 # runs out of memory. Useful for a minute, never worth keeping.
 hs_err_pid*.log
 replay_pid*.log
+
+# Firebase service-account keys. They can send notifications as the project.
+*firebase-adminsdk*.json

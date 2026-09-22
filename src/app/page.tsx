@@ -40,6 +40,7 @@ export default async function Home() {
         search: configured.search(),
         calendar: configured.calendar(),
         telegram: configured.telegram(),
+        appPush: configured.appPush(),
       }}
       timezone={env.timezone}
       today={today}

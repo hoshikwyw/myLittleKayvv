@@ -96,6 +96,7 @@ export async function GET(request: Request) {
     search: configured.search(),
     calendar: configured.calendar(),
     telegram: configured.telegram(),
+    appPush: configured.appPush(),
     email: configured.email(),
   };
 

@@ -225,6 +225,8 @@ export interface SubsystemStatus {
   search: boolean;
   calendar: boolean;
   telegram: boolean;
+  /** Reminders pushed to the Android app through Firebase. */
+  appPush: boolean;
   voice: boolean;
 }
 
@@ -254,6 +256,7 @@ export function SystemBody({
     ["memory", status.database],
     ["voice", status.voice],
     ["telegram", status.telegram],
+    ["app notifications", status.appPush],
     // "maps" read as the world map, which is always on and needs no key —
     // it draws itself and its weather comes from a keyless service. This row
     // is the Google Places tool for finding real businesses, and naming it

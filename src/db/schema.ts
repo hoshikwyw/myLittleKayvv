@@ -342,6 +342,8 @@ export const notificationChannelEnum = pgEnum("notification_channel", [
   "telegram",
   "email",
   "in_app",
+  // A push notification to the Android app, through Firebase.
+  "app",
 ]);
 
 export const notificationStatusEnum = pgEnum("notification_status", [
@@ -373,6 +375,24 @@ export const notifications = pgTable(
   },
   (t) => [index("notifications_sent_at_idx").on(t.sentAt)],
 );
+
+/**
+ * Phones the app is installed on, by their Firebase Cloud Messaging token.
+ *
+ * The token is the only address a push notification has. The app sends it
+ * each time it starts, since Firebase rotates tokens now and then; a row whose
+ * token Firebase reports as gone is deleted when a push to it fails.
+ */
+export const devices = pgTable("devices", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  token: text("token").notNull().unique(),
+  platform: text("platform").notNull().default("android"),
+  /** Last time the app reported this token, to tell a live phone from a lost one. */
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  createdAt,
+});
 
 /* ===========================================================================
  * Relations

@@ -108,6 +108,18 @@ export const env = {
     return required("GOOGLE_OAUTH_REFRESH_TOKEN");
   },
 
+  // --- App notifications (Firebase Cloud Messaging) ---
+  /**
+   * The Firebase service-account key, as its JSON or that JSON in base64.
+   *
+   * Base64 is accepted because the key's private half is full of newlines, and
+   * a dashboard's single-line field or a .env parser mangles those more often
+   * than not. One unbroken line survives every copy and paste.
+   */
+  get firebaseServiceAccount() {
+    return required("FIREBASE_SERVICE_ACCOUNT");
+  },
+
   // --- App ---
   /**
    * The single password that guards the whole app.
@@ -155,6 +167,8 @@ export const configured = {
   search: () => Boolean(process.env.TAVILY_API_KEY),
   /** Whether the app is behind a password. Checked, not assumed. */
   locked: () => Boolean(process.env.APP_PASSWORD),
+  /** Whether reminders can also be pushed to the Android app. */
+  appPush: () => Boolean(process.env.FIREBASE_SERVICE_ACCOUNT),
   calendar: () =>
     Boolean(
       process.env.GOOGLE_OAUTH_CLIENT_ID &&
