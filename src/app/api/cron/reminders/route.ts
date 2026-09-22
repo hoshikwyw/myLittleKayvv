@@ -24,16 +24,35 @@ export const maxDuration = 30;
  * `?dryRun=1` reports what would be sent without sending or marking anything,
  * so the sweep can be exercised without waiting a day or spending a message.
  */
-function isAuthorised(request: Request): boolean {
-  return cronAuthorised(
-    request.headers.get("authorization"),
-    process.env.CRON_SECRET,
-  );
-}
-
+/**
+ * The secret, from the Authorization header or `?secret=`.
+ *
+ * The header is the proper place. The query string is there because a
+ * scheduler's header settings are a second form, easy to leave unsaved, and a
+ * sweep that is silently refused means reminders that silently never come.
+ * A URL is one field that either works or does not. Vercel's request logs are
+ * private to the project, which is the only place the URL is recorded.
+ */
 async function handle(request: Request) {
-  if (!isAuthorised(request)) {
-    return Response.json({ error: "Unauthorised" }, { status: 401 });
+  const header = request.headers.get("authorization");
+  const query = new URL(request.url).searchParams.get("secret");
+  const secret = process.env.CRON_SECRET;
+
+  // Either will do: a stale header left in a scheduler must not stop a
+  // correct secret in the URL from being accepted.
+  if (!cronAuthorised(header, secret) && !cronAuthorised(query, secret)) {
+    // Say which of the two it was. Neither answer tells a stranger anything
+    // about the secret, and it is the difference between fixing a scheduler
+    // in one try and guessing.
+    return Response.json(
+      {
+        error: "Unauthorised",
+        reason: header || query
+          ? "A secret was sent, but it does not match CRON_SECRET."
+          : "No secret was sent. Add the header Authorization: Bearer <CRON_SECRET>, or ?secret=<CRON_SECRET> to the URL.",
+      },
+      { status: 401 },
+    );
   }
 
   if (!configured.database()) {

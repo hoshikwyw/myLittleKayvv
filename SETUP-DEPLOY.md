@@ -199,8 +199,19 @@ timed reminder needs the sweep called every fifteen minutes, and
 
    Use the `CRON_SECRET` **from Vercel**, not from `.env.local` — if the two
    differ, this one must match Vercel's, or every run is refused with a 401.
+   `Bearer ` may be left off, and stray spaces or quotes are ignored.
+
+   **Or skip the header** and put the secret in the URL instead — one field,
+   nothing else to save:
+
+   ```
+   https://<your-app>.vercel.app/api/cron/reminders?secret=<CRON_SECRET>
+   ```
+
 6. **Save**, then press **Test run**. You want status **200** and a body
-   containing `"ok":true`. A **401** means the header is wrong.
+   containing `"ok":true`. A **401** says why in its `reason`: *no secret was
+   sent* means the header was not saved; *does not match* means the value is
+   not Vercel's `CRON_SECRET`.
 
 **Why fifteen minutes and not every minute.** Neon's free tier gives 100
 compute-hours a month, and the database stays awake for five minutes after
