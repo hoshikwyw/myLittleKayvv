@@ -29,6 +29,7 @@
     "@capacitor/android": "^8.5.2",
     "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.5.2",
+    "@capacitor/push-notifications": "^8.1.2",
     "@google/genai": "^2.18.0",
     "@neondatabase/serverless": "^1.1.0",
     "clsx": "^2.1.1",

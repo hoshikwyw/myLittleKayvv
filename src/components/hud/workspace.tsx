@@ -39,6 +39,7 @@ import { viewFor, stepForDistance, WORLD_STEP } from "./map-zoom";
 import { useStreets } from "@/hooks/use-streets";
 import { useModelChoice } from "@/hooks/use-model-choice";
 import { useBackToClose, useNativeBackButton } from "@/hooks/use-back-button";
+import { forgetThisPhone, useAppNotifications } from "@/hooks/use-app-notifications";
 
 import type { WorldPaths } from "@/lib/map/world";
 import type { MemoryOverview } from "@/lib/memory/overview";
@@ -252,6 +253,8 @@ export function HudWorkspace({
    */
   const signOut = useCallback(async () => {
     voice.cancelSpeech();
+    // Before the session ends: removing the phone needs the session.
+    await forgetThisPhone();
     await fetch("/api/login", { method: "DELETE" }).catch(() => {});
     router.replace("/login");
     router.refresh();
@@ -283,6 +286,8 @@ export function HudWorkspace({
   // On Android, back does what Escape does here: leaves full screen first,
   // and only minimises the app when there is nothing left to close.
   useNativeBackButton();
+  // In the Android app: register this phone for reminder notifications.
+  useAppNotifications();
   useBackToClose(Boolean(maximised), () => {
     if (maximised) setPanel(maximised.id, "open");
   });
