@@ -60,6 +60,42 @@ function messageOf(error: unknown): string {
   return JSON.stringify(error);
 }
 
+/**
+ * What a Firebase registration error means, in words that say what to do.
+ *
+ * SERVICE_NOT_AVAILABLE is by far the usual one, and it is never the app's
+ * fault: the phone could not reach Google's notification servers at all —
+ * a network that blocks Google, or Google Play services held back.
+ */
+export function describeRegistrationError(raw: string): string {
+  if (/SERVICE_NOT_AVAILABLE|TIMEOUT|INTERNAL_SERVER_ERROR/i.test(raw)) {
+    return (
+      "This phone could not reach Google's notification service " +
+      "(SERVICE_NOT_AVAILABLE). Kayv keeps trying. If it lasts: try with a VPN " +
+      "on, or set Google Play services' battery use to No restrictions and update " +
+      "it from the Play Store."
+    );
+  }
+  if (/MISSING_INSTANCEID_SERVICE|PHONE_REGISTRATION_ERROR/i.test(raw)) {
+    return (
+      "Google Play services is missing, disabled or out of date on this phone. " +
+      `Update it from the Play Store. (${raw})`
+    );
+  }
+  if (/AUTHENTICATION_FAILED|INVALID_SENDER|API key/i.test(raw)) {
+    return `Firebase rejected the app's configuration — google-services.json may not match the project. (${raw})`;
+  }
+  return `Firebase could not register this phone: ${raw}`;
+}
+
+/** Whether a registration error is worth trying again after a pause. */
+export function isTransient(raw: string): boolean {
+  return /SERVICE_NOT_AVAILABLE|TIMEOUT|INTERNAL_SERVER_ERROR|IOException/i.test(raw);
+}
+
+/** Seconds between attempts after a transient failure; then only on resume. */
+const RETRY_DELAYS = [15, 60, 300];
+
 async function saveToken(token: string): Promise<void> {
   try {
     const response = await fetch("/api/devices", {
@@ -94,12 +130,23 @@ export function useAppNotifications(): void {
     if (!isNativeShell()) return;
 
     let cancelled = false;
+    let retries = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     const handles: Array<{ remove: () => Promise<void> }> = [];
 
     void (async () => {
       report({ step: "starting" });
 
       const { PushNotifications } = await import("@capacitor/push-notifications");
+      const { App } = await import("@capacitor/app");
+
+      const attempt = () => {
+        if (cancelled || status?.step === "registered") return;
+        report({ step: "registering" });
+        PushNotifications.register().catch((error: unknown) => {
+          report({ step: "failed", reason: describeRegistrationError(messageOf(error)) });
+        });
+      };
 
       /*
        * Android 8+ files every notification under a channel, and the channel's
@@ -121,10 +168,29 @@ export function useAppNotifications(): void {
           void saveToken(value);
         }),
         await PushNotifications.addListener("registrationError", (error) => {
-          report({
-            step: "failed",
-            reason: `Firebase could not register this phone: ${messageOf(error.error)}`,
-          });
+          const raw = messageOf(error.error);
+          report({ step: "failed", reason: describeRegistrationError(raw) });
+
+          // A phone that briefly could not reach Google usually can a minute
+          // later. Try a few times, then leave it to the next return to the app.
+          if (isTransient(raw) && retries < RETRY_DELAYS.length) {
+            clearTimeout(retryTimer);
+            retryTimer = setTimeout(attempt, RETRY_DELAYS[retries++] * 1000);
+          }
+        }),
+        // Coming back to the app is a fresh chance: the network may have
+        // changed, a VPN may be on, Play services may have woken up.
+        await App.addListener("resume", () => {
+          if (status?.step === "failed") {
+            retries = 0;
+            attempt();
+          }
+          // Back from Settings, where notifications may just have been allowed.
+          if (status?.step === "denied") {
+            void PushNotifications.checkPermissions().then(({ receive }) => {
+              if (receive === "granted") attempt();
+            });
+          }
         }),
       );
 
@@ -140,14 +206,14 @@ export function useAppNotifications(): void {
         return;
       }
 
-      report({ step: "registering" });
-      await PushNotifications.register();
+      attempt();
     })().catch((error: unknown) => {
       report({ step: "failed", reason: messageOf(error) });
     });
 
     return () => {
       cancelled = true;
+      clearTimeout(retryTimer);
       for (const handle of handles) void handle.remove();
     };
   }, []);
