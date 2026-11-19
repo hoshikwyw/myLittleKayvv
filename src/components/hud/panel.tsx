@@ -48,7 +48,7 @@ export function HudPanel({
     <section
       aria-label={title}
       className={cn(
-        "hud-frame glass pointer-events-auto flex flex-col overflow-hidden rounded-sm border",
+        "hud-frame glass pointer-events-auto flex flex-col overflow-hidden rounded-xl border shadow-soft",
         "transition-colors duration-200",
         live ? "hud-frame-live border-accent/50" : "border-border",
         // Full window, edge to edge. The panel is glass, so what it covers
@@ -65,7 +65,7 @@ export function HudPanel({
     >
       <header
         className={cn(
-          "flex shrink-0 items-center gap-2 border-b px-2.5 py-1.5",
+          "flex shrink-0 items-center gap-2.5 border-b px-3 py-2.5",
           live ? "border-accent/30" : "border-border",
         )}
       >
@@ -93,7 +93,7 @@ export function HudPanel({
             aria-label={minimised ? `Expand ${title}` : `Collapse ${title}`}
             aria-expanded={!minimised}
             aria-controls={bodyId}
-            className="text-text-faint hover:text-accent grid size-5 place-items-center transition-colors"
+            className="text-text-faint hover:text-accent grid size-11 place-items-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             {minimised ? (
               <Maximize2 className="size-3" />
@@ -108,7 +108,7 @@ export function HudPanel({
               type="button"
               onClick={() => onStateChange("open")}
               aria-label={`Leave full screen`}
-              className="text-accent border-accent/50 hover:bg-accent-soft mr-1 flex items-center gap-1 rounded-sm border px-1.5 py-0.5 transition-colors"
+              className="text-accent border-accent/50 hover:bg-accent-soft mr-1 flex min-h-11 items-center gap-2 rounded-lg border px-3 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <Minimize2 className="size-3" />
               <span className="hud-label !text-[9px] !tracking-[0.12em] text-current">
