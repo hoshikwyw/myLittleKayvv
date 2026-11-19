@@ -33,11 +33,10 @@ This is an AI design skill with searchable design guidance and stack-specific ru
 Use the repository's documented CLI installation flow from the project root:
 
 ```bash
-npm install -g ui-ux-pro-max-cli
-uipro init --ai claude
+npx ui-ux-pro-max-cli init --ai claude
 ```
 
-This installs the skill for Claude Code in the current project. If the CLI is already installed, do not reinstall it unnecessarily; run the project install command and verify the resulting files.
+This installs the skill for Claude Code in the current project. This uses the project's documented npx installer without requiring a global CLI install. Run it from the Kayv repository root and verify the generated project-local skill files.
 
 Expected project-local skill location:
 
