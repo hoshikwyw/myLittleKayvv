@@ -64,3 +64,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+
+## UI/UX work
+
+For interface design, implementation, and review, use the project-local UI/UX Pro Max skill when installed at `.claude/skills/ui-ux-pro-max/`. Read its `SKILL.md` and relevant references before changing UI. Use its Next.js stack guidance and design-system workflow; keep its scripts and data in the skill directory, not application runtime code.
+
+The detailed Kayv redesign brief is `CLAUDE_UI_UX_UPGRADE.md`. Follow it for product hierarchy, responsive behavior, accessibility, visual direction, and acceptance criteria. If the skill is not installed, follow the installation instructions in that brief and verify the files before claiming installation.
