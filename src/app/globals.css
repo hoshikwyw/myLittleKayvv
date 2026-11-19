@@ -366,3 +366,34 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Interaction polish — consistent focus, selection, and comfortable controls. */
+::selection {
+  color: var(--accent-contrast);
+  background: var(--accent);
+}
+
+:where(button, a, input, textarea, select, [role="button"]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+:where(button, a, input, textarea, select) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled),
+  a {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: 160ms;
+    transition-timing-function: ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+}
