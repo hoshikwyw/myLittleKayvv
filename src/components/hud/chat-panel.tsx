@@ -59,7 +59,7 @@ export function ChatPanelBody({
               >
                 <div
                   className={cn(
-                    "animate-rise max-w-[88%] rounded-sm border px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap",
+                    "animate-rise max-w-[88%] rounded-2xl border px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
                     message.role === "user"
                       ? "border-accent/50 text-text"
                       : "border-border bg-surface/70 text-text",
@@ -143,7 +143,7 @@ export function ChatPanelBody({
           placeholder={voice.listening ? "listening…" : `message ${assistantName}`}
           aria-label="Message"
           className={cn(
-            "border-border bg-surface/60 max-h-28 min-h-9 flex-1 resize-none rounded-sm border px-2.5 py-1.5 text-[13px] outline-none",
+            "border-border bg-surface/70 max-h-32 min-h-11 flex-1 resize-none rounded-xl border px-3 py-2 text-sm outline-none",
             "focus:border-accent focus:shadow-[0_0_16px_-6px_var(--accent)] transition-shadow",
             voice.interim && "text-text-muted italic",
           )}
@@ -154,7 +154,7 @@ export function ChatPanelBody({
           onClick={() => (assistant.busy ? onStop() : onSubmit())}
           disabled={!assistant.busy && displayed.trim().length === 0}
           aria-label={assistant.busy ? "Stop" : "Send"}
-          className="border-accent/60 text-accent grid size-9 shrink-0 place-items-center rounded-sm border transition-all hover:brightness-125 active:scale-95 disabled:opacity-30"
+          className="border-accent/60 text-accent grid size-11 shrink-0 place-items-center rounded-xl border transition-all hover:brightness-125 active:scale-95 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           style={{
             background:
               "linear-gradient(135deg, color-mix(in oklab, var(--accent) 18%, transparent), transparent)",
